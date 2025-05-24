@@ -16,12 +16,12 @@ const getResolution = (width, height) => {
 };
 
 const extractHashtags = (text) => {
-  return (text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || []);
+  return (text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
 };
 
 // Main function to get working video URL
 const getWorkingVideoUrl = async (videoId) => {
-  // Try to get signed URL from TikTok API first
+  // First try to get the playable URL from TikTok's API
   try {
     const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
       headers: {
@@ -35,33 +35,33 @@ const getWorkingVideoUrl = async (videoId) => {
       return apiResponse.data.aweme_list[0].video.play_addr.url_list[0];
     }
   } catch (apiError) {
-    console.log('API request failed, falling back to CDN');
+    console.log('API request failed, trying alternative methods');
   }
 
-  // If API fails, construct CDN URL with required parameters
-  const params = new URLSearchParams({
-    a: 1988,
-    bti: 'ODszNWYuMDE6',
-    ch: 0,
-    cr: 3,
-    dr: 0,
-    lr: 'all',
-    cd: '0|0|0|',
-    cv: 1,
-    br: 2698,
-    bt: 1349,
-    cs: 0,
-    ds: 6,
-    ft: '4KJMyMzm8Zmo0rX8_I4jVy5ZdpWrKsd.',
-    mime_type: 'video_mp4',
-    qs: 0,
-    rc: 'NjRpZzszNDc3Z2g4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==',
-    vvpl: 1,
-    l: Date.now().toString(16).toUpperCase(),
-    btag: 'e00088000'
-  });
+  // If direct API fails, try these verified CDN patterns
+  const cdnPatterns = [
+    `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?a=1988&bti=ODszNWYuMDE6&ch=0&cr=3&dr=0&lr=all&cd=0|0|0|&cv=1&br=2698&bt=1349&cs=0&ds=6&ft=4KJMyMzm8Zmo0rX8_I4jVy5ZdpWrKsd.&mime_type=video_mp4&qs=0&rc=${Buffer.from(`M2Z3Zjg4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==`).toString('base64')}&vvpl=1&l=${Date.now().toString(16).toUpperCase()}&btag=e00088000`,
+    `https://v16.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?a=1988&bti=ODszNWYuMDE6&ch=0&cr=3&dr=0&lr=all&cd=0|0|0|&cv=1&br=2698&bt=1349&cs=0&ds=6&ft=4KJMyMzm8Zmo0rX8_I4jVy5ZdpWrKsd.&mime_type=video_mp4&qs=0&rc=${Buffer.from(`M2Z3Zjg4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==`).toString('base64')}&vvpl=1&l=${Date.now().toString(16).toUpperCase()}&btag=e00088000`,
+    `https://v19.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?a=1988&bti=ODszNWYuMDE6&ch=0&cr=3&dr=0&lr=all&cd=0|0|0|&cv=1&br=2698&bt=1349&cs=0&ds=6&ft=4KJMyMzm8Zmo0rX8_I4jVy5ZdpWrKsd.&mime_type=video_mp4&qs=0&rc=${Buffer.from(`M2Z3Zjg4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==`).toString('base64')}&vvpl=1&l=${Date.now().toString(16).toUpperCase()}&btag=e00088000`
+  ];
 
-  return `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?${params.toString()}`;
+  // Test each CDN pattern to find a working one
+  for (const url of cdnPatterns) {
+    try {
+      const response = await axios.head(url, {
+        timeout: 3000,
+        validateStatus: (status) => status === 200
+      });
+      if (response.status === 200) {
+        return url;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
+  // Final fallback - use the web page URL
+  return `https://www.tiktok.com/@placeholder/video/${videoId}`;
 };
 
 // Main function
@@ -151,7 +151,10 @@ module.exports = async (url) => {
         avatar: videoData.author?.avatarLarger || "",
         avatar_thumb: videoData.author?.avatarThumb || ""
       },
-      hashtags: extractHashtags(videoData.desc || "")
+      hashtags: extractHashtags(videoData.desc || ""),
+      warnings: videoUrl.includes('tiktok.com/@') ? 
+        ['Could not find direct CDN URL, using web page as fallback'] : 
+        []
     };
 
   } catch (error) {
