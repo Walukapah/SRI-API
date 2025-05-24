@@ -2,6 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 
+// Helper functions
 const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
@@ -21,24 +22,10 @@ const formatCount = (num) => {
   return num.toString();
 };
 
-const generateRandomHex = (length) => {
-  return crypto.randomBytes(Math.ceil(length/2))
-    .toString('hex')
-    .slice(0, length);
-};
-
-const generateTimestamp = () => {
-  const now = new Date();
-  return now.toISOString()
-    .replace(/[-:]/g, '')
-    .split('.')[0] + 
-    Math.random().toString(16)
-    .substring(2, 6)
-    .toUpperCase();
-};
-
+// Main function to get working video URL
 const getWorkingVideoUrl = async (videoId) => {
   try {
+    // First try to get signed URL from TikTok API
     const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
       headers: {
         'User-Agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4; Build/QQ3A.200805.001; Cronet/58.0.2991.0)',
@@ -51,42 +38,17 @@ const getWorkingVideoUrl = async (videoId) => {
       return apiResponse.data.aweme_list[0].video.play_addr.url_list[0];
     }
   } catch (apiError) {
-    console.log('API request failed, generating CDN URL');
+    console.log('API request failed, using tikcdn.io');
   }
 
-  const randomHex = generateRandomHex(32);
-  const randomPath = generateRandomHex(8).toUpperCase();
-  const timestamp = generateTimestamp();
-
-  const params = new URLSearchParams({
-    a: 0,
-    bti: 'OHYpOTY0Zik3OjlmOm01MzE6ZDQ0MDo=',
-    ch: 0,
-    cr: 13,
-    dr: 0,
-    er: 0,
-    lr: 'all',
-    net: 0,
-    cd: '0|0|0|',
-    cv: 1,
-    br: 2084,
-    bt: 1042,
-    cs: 0,
-    ds: 6,
-    ft: '4bBsyMZj8Zmo0cxH_I4jVcWn-C1rKsd.',
-    mime_type: 'video_mp4',
-    qs: 0,
-    rc: crypto.randomBytes(32).toString('base64'),
-    vvpl: 1,
-    l: timestamp,
-    btag: 'e00098000'
-  });
-
-  return `https://v16m-default.tiktokcdn-us.com/${randomHex}/video/tos/useast2a/tos-useast2a-ve-0068c004/o${randomPath}/?${params.toString()}`;
+  // Return clean watermark-free URL in the requested format
+  return `https://tikcdn.io/tiktokdownload/${videoId}`;
 };
 
+// Main function
 module.exports = async (url) => {
   try {
+    // Handle short URLs
     if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
       const response = await axios.head(url, {
         maxRedirects: 0,
@@ -98,12 +60,15 @@ module.exports = async (url) => {
       }
     }
 
-    const videoIdMatch = url.match(/video\/(\d+)/);
+    // Extract video ID
+    const videoIdMatch = url.match(/video\/(\d+)/) || url.match(/\/(\d{15,})/);
     if (!videoIdMatch) throw new Error('Invalid TikTok URL');
     const videoId = videoIdMatch[1];
 
+    // Get working video URL
     const videoUrl = await getWorkingVideoUrl(videoId);
 
+    // Get video metadata
     const { data: html } = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -112,6 +77,7 @@ module.exports = async (url) => {
       timeout: 5000
     });
 
+    // Parse metadata
     const $ = cheerio.load(html);
     const script = $('script#__UNIVERSAL_DATA_FOR_REHYDRATION__').html();
     if (!script) throw new Error('TikTok metadata not found');
@@ -120,10 +86,27 @@ module.exports = async (url) => {
     const videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;
     if (!videoData) throw new Error('Video data extraction failed');
 
+    // Format response
     return {
       status: true,
       id: videoData.id,
       title: videoData.desc || "",
+      caption: videoData.desc || "",
+      url: url,
+      created_at: new Date(videoData.createTime * 1000).toLocaleString('en-US', {
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit'
+      }).replace(',', ''),
+      stats: {
+        likeCount: formatCount(videoData.stats?.diggCount || 0),
+        commentCount: videoData.stats?.commentCount || 0,
+        shareCount: videoData.stats?.shareCount || 0,
+        playCount: formatCount(videoData.stats?.playCount || 0),
+        saveCount: videoData.stats?.collectCount || 0
+      },
       video: {
         noWatermark: videoUrl,
         cover: videoData.video?.cover || "",
@@ -138,29 +121,20 @@ module.exports = async (url) => {
       music: {
         id: videoData.music?.id || "",
         title: `original sound - ${videoData.music?.authorName || ""}`,
-        play_url: videoData.music?.playUrl || "",
         author: videoData.music?.authorName || "",
-        duration: videoData.music?.duration || 0
+        cover_large: videoData.music?.coverMedium || "",
+        cover_medium: videoData.music?.coverThumb || "",
+        duration: videoData.music?.duration || 0,
+        durationFormatted: formatDuration(videoData.music?.duration || 0),
+        play_url: videoData.music?.playUrl || ""
       },
-      stats: {
-        playCount: formatCount(videoData.stats?.playCount || 0),
-        likeCount: formatCount(videoData.stats?.diggCount || 0),
-        commentCount: videoData.stats?.commentCount || 0,
-        shareCount: videoData.stats?.shareCount || 0,
-        saveCount: videoData.stats?.collectCount || 0
-      },
-      created_at: new Date(videoData.createTime * 1000).toLocaleString('en-US', {
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit'
-      }).replace(',', ''),
       author: {
         id: videoData.author?.id || "",
         name: videoData.author?.nickname || "",
         unique_id: videoData.author?.uniqueId || "",
-        avatar: videoData.author?.avatarLarger || ""
+        signature: videoData.author?.signature || "",
+        avatar: videoData.author?.avatarLarger || "",
+        avatar_thumb: videoData.author?.avatarThumb || ""
       }
     };
 
