@@ -1,70 +1,65 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Helper function to follow redirects
-async function followRedirects(url) {
+async function getWorkingVideoUrl(videoId) {
   try {
-    const response = await axios.head(url, {
-      maxRedirects: 0,
-      validateStatus: (status) => status >= 200 && status < 400
-    });
+    // Try webapp-prime domain first
+    const primeUrl = `https://v16-webapp-prime.us.tiktok.com/video/tos/useast2a/tos-useast2a-ve-0068c003/${videoId}/`;
+    const primeResponse = await axios.head(primeUrl, { validateStatus: null });
     
-    if (response.headers.location) {
-      return response.headers.location;
+    if (primeResponse.status === 200) {
+      return primeUrl;
     }
-    return url;
-  } catch (error) {
-    if (error.response?.status === 301 || error.response?.status === 302) {
-      return error.response.headers.location;
-    }
-    throw error;
-  }
-}
 
-// Helper function to extract video ID
-function extractVideoId(url) {
-  // Handle standard URLs
-  const standardMatch = url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
-  if (standardMatch) return standardMatch[1];
-  
-  // Handle short URLs after redirect
-  const shortMatch = url.match(/video\/(\d+)/);
-  if (shortMatch) return shortMatch[1];
-  
-  throw new Error('Could not extract video ID from URL');
+    // Fallback to default CDN
+    return `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`;
+  } catch (error) {
+    console.error('Error checking video URLs:', error);
+    throw new Error('Could not find working video URL');
+  }
 }
 
 module.exports = async function(url) {
   try {
-    // Step 1: Handle short URLs (vm.tiktok.com, vt.tiktok.com)
+    // Handle short URLs
     if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
-      url = await followRedirects(url);
+      const response = await axios.head(url, { 
+        maxRedirects: 0, 
+        validateStatus: null 
+      });
+      if (response.headers.location) {
+        url = response.headers.location;
+      }
     }
 
-    // Step 2: Extract video ID
-    const videoId = extractVideoId(url);
-    if (!videoId) throw new Error('Invalid TikTok URL format');
+    // Extract video ID
+    const videoIdMatch = url.match(/video\/(\d+)/);
+    if (!videoIdMatch) throw new Error('Could not extract video ID');
+    const videoId = videoIdMatch[1];
 
-    // Step 3: Get video page with proper headers
+    // Get working video URL
+    const videoUrl = await getWorkingVideoUrl(videoId);
+
+    // Get video page for metadata
     const { data: html } = await axios.get(`https://www.tiktok.com/@placeholder/video/${videoId}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://www.tiktok.com/',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9'
       }
     });
 
-    // Step 4: Parse JSON data from HTML
+    // Parse metadata
     const $ = cheerio.load(html);
     const script = $('script#__UNIVERSAL_DATA_FOR_REHYDRATION__').html();
-    if (!script) throw new Error('TikTok data not found in page');
-
+    if (!script) throw new Error('TikTok data not found');
+    
     const jsonData = JSON.parse(script);
     const videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;
     if (!videoData) throw new Error('Video data extraction failed');
 
-    // Step 5: Format response
+    // Format response with all metadata
     return {
       id: videoData.id,
       title: videoData.desc || "No title",
@@ -79,27 +74,37 @@ module.exports = async function(url) {
         saveCount: videoData.stats?.collectCount || 0
       },
       video: {
-        noWatermark: videoData.video?.downloadAddr || videoData.video?.playAddr || "",
+        noWatermark: videoUrl,
         watermark: videoData.video?.playAddr || "",
         cover: videoData.video?.cover || "",
         dynamic_cover: videoData.video?.dynamicCover || "",
+        origin_cover: videoData.video?.originCover || "",
         width: videoData.video?.width || 0,
         height: videoData.video?.height || 0,
-        duration: videoData.video?.duration || 0
+        duration: videoData.video?.duration || 0,
+        durationFormatted: formatDuration(videoData.video?.duration || 0),
+        ratio: getResolution(videoData.video?.width, videoData.video?.height)
       },
       music: {
         id: videoData.music?.id || "",
         title: videoData.music?.title || "original sound",
         author: videoData.music?.authorName || "",
         play_url: videoData.music?.playUrl || "",
-        cover: videoData.music?.coverLarge || ""
+        cover_hd: videoData.music?.coverLarge || "",
+        cover_large: videoData.music?.coverMedium || "",
+        cover_medium: videoData.music?.coverThumb || "",
+        duration: videoData.music?.duration || 0,
+        durationFormatted: formatDuration(videoData.music?.duration || 0)
       },
       author: {
         id: videoData.author?.id || "",
         name: videoData.author?.nickname || "",
         unique_id: videoData.author?.uniqueId || "",
-        avatar: videoData.author?.avatarLarger || ""
-      }
+        signature: videoData.author?.signature || "",
+        avatar: videoData.author?.avatarLarger || "",
+        avatar_thumb: videoData.author?.avatarThumb || ""
+      },
+      hashtags: extractHashtags(videoData.desc || "")
     };
 
   } catch (error) {
@@ -107,3 +112,22 @@ module.exports = async function(url) {
     throw new Error('Failed to fetch TikTok data: ' + error.message);
   }
 };
+
+// Helper functions
+function formatDuration(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function getResolution(width, height) {
+  if (!width || !height) return "";
+  return height >= 1920 ? '1080p' : 
+         height >= 1280 ? '720p' : 
+         height >= 720 ? '480p' : '360p';
+}
+
+function extractHashtags(text) {
+  const matches = text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
+  return matches.map(tag => tag.replace('#', ''));
+}
