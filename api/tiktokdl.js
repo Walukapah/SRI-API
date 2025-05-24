@@ -1,80 +1,78 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Helper function to format duration
-function formatDuration(seconds) {
+// Helper functions
+const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
+};
 
-// Helper function to detect resolution
-function getResolution(width, height) {
+const getResolution = (width, height) => {
   if (!width || !height) return "";
   return height >= 1920 ? '1080p' : 
          height >= 1280 ? '720p' : 
          height >= 720 ? '480p' : '360p';
-}
+};
 
-// Helper function to extract hashtags
-function extractHashtags(text) {
-  const matches = text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
-  return matches.map(tag => tag.replace('#', ''));
-}
+const extractHashtags = (text) => {
+  return (text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
+};
 
 // Main function to get working video URL
-async function getWorkingVideoUrl(videoId) {
-  const endpoints = [
-    // API endpoints
-    `https://api.tiktokv.com/aweme/v1/play/?video_id=${videoId}`,
-    `https://api2.musical.ly/aweme/v1/play/?video_id=${videoId}`,
-    
-    // Webapp endpoints
-    `https://v16-webapp-prime.us.tiktok.com/video/tos/useast2a/tos-useast2a-ve-0068c003/${videoId}/`,
-    `https://v16-webapp.tiktok.com/video/tos/useast2a/tos-useast2a-ve-0068c003/${videoId}/`,
-    
-    // CDN endpoints
-    `https://v16.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
-    `https://v16m.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
-    `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
-    `https://v19.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
-    
-    // International CDNs
-    `https://v16.tiktokcdn.com/${videoId}/video/tos/alisg/tos-alisg-pve-0037c001/`,
-    `https://v16.tiktokcdn.com/${videoId}/video/tos/maliva/tos-maliva-ve-0068c001/`
-  ];
+const getWorkingVideoUrl = async (videoId) => {
+  // Try to get signed URL from TikTok API first
+  try {
+    const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
+      headers: {
+        'User-Agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4; Build/QQ3A.200805.001; Cronet/58.0.2991.0)',
+        'Accept': 'application/json'
+      },
+      timeout: 5000
+    });
 
-  // Try each endpoint with timeout
-  for (const endpoint of endpoints) {
-    try {
-      const response = await axios.head(endpoint, {
-        timeout: 3000,
-        validateStatus: (status) => status === 200 || status === 302
-      });
-      
-      if (response.status === 302 && response.headers.location) {
-        return response.headers.location;
-      }
-      if (response.status === 200) {
-        return endpoint;
-      }
-    } catch (e) {
-      continue;
+    if (apiResponse.data?.aweme_list?.[0]?.video?.play_addr?.url_list?.[0]) {
+      return apiResponse.data.aweme_list[0].video.play_addr.url_list[0];
     }
+  } catch (apiError) {
+    console.log('API request failed, falling back to CDN');
   }
 
-  // Final fallback
-  return `https://www.tiktok.com/@placeholder/video/${videoId}`;
-}
+  // If API fails, construct CDN URL with required parameters
+  const params = new URLSearchParams({
+    a: 1988,
+    bti: 'ODszNWYuMDE6',
+    ch: 0,
+    cr: 3,
+    dr: 0,
+    lr: 'all',
+    cd: '0|0|0|',
+    cv: 1,
+    br: 2698,
+    bt: 1349,
+    cs: 0,
+    ds: 6,
+    ft: '4KJMyMzm8Zmo0rX8_I4jVy5ZdpWrKsd.',
+    mime_type: 'video_mp4',
+    qs: 0,
+    rc: 'NjRpZzszNDc3Z2g4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==',
+    vvpl: 1,
+    l: Date.now().toString(16).toUpperCase(),
+    btag: 'e00088000'
+  });
 
-// Main export function
-module.exports = async function(url) {
+  return `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?${params.toString()}`;
+};
+
+// Main function
+module.exports = async (url) => {
   try {
     // Handle short URLs
     if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
-      const response = await axios.head(url, { 
-        maxRedirects: 0, 
-        validateStatus: null 
+      const response = await axios.head(url, {
+        maxRedirects: 0,
+        validateStatus: null,
+        timeout: 3000
       });
       if (response.headers.location) {
         url = response.headers.location;
@@ -83,38 +81,31 @@ module.exports = async function(url) {
 
     // Extract video ID
     const videoIdMatch = url.match(/video\/(\d+)/);
-    if (!videoIdMatch) throw new Error('Could not extract video ID');
+    if (!videoIdMatch) throw new Error('Invalid TikTok URL');
     const videoId = videoIdMatch[1];
 
-    // Get working video URL with fallback
-    let videoUrl;
-    try {
-      videoUrl = await getWorkingVideoUrl(videoId);
-    } catch (e) {
-      console.warn('Using web page as fallback URL');
-      videoUrl = `https://www.tiktok.com/@placeholder/video/${videoId}`;
-    }
+    // Get working video URL
+    const videoUrl = await getWorkingVideoUrl(videoId);
 
     // Get video metadata
     const { data: html } = await axios.get(`https://www.tiktok.com/@placeholder/video/${videoId}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://www.tiktok.com/',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9'
-      }
+        'Referer': 'https://www.tiktok.com/'
+      },
+      timeout: 5000
     });
 
     // Parse metadata
     const $ = cheerio.load(html);
     const script = $('script#__UNIVERSAL_DATA_FOR_REHYDRATION__').html();
-    if (!script) throw new Error('TikTok data not found in page');
+    if (!script) throw new Error('TikTok metadata not found');
     
     const jsonData = JSON.parse(script);
     const videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;
     if (!videoData) throw new Error('Video data extraction failed');
 
-    // Format complete response
+    // Format response
     return {
       status: true,
       id: videoData.id,
@@ -160,18 +151,15 @@ module.exports = async function(url) {
         avatar: videoData.author?.avatarLarger || "",
         avatar_thumb: videoData.author?.avatarThumb || ""
       },
-      hashtags: extractHashtags(videoData.desc || ""),
-      warnings: videoUrl.includes('tiktok.com/@') ? 
-        ['Could not find direct CDN URL, using web page as fallback'] : 
-        []
+      hashtags: extractHashtags(videoData.desc || "")
     };
 
   } catch (error) {
-    console.error('TikTok API Error:', error);
-    throw {
+    console.error('Error:', error);
+    return {
       status: false,
-      message: 'Failed to fetch TikTok data: ' + error.message,
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     };
   }
 };
