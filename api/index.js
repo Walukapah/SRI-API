@@ -6,52 +6,28 @@ const cors = require('cors');
 
 const app = express();
 
+// Configure trust proxy for Vercel
+app.set('trust proxy', 1); // Trust first proxy
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting with proxy configuration
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests
+  max: 100, // limit each IP to 100 requests
+  message: 'Too many requests from this IP, please try again later',
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false, // Disable legacy headers
+  keyGenerator: (req) => {
+    // Use the client's real IP address (considering proxies)
+    return req.ip;
+  }
 });
 app.use(limiter);
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API endpoint
-app.get('/download/tiktokdl', async (req, res) => {
-  try {
-    const url = req.query.url;
-    
-    if (!url || !url.includes('tiktok.com')) {
-      return res.status(400).json({ 
-        status: false, 
-        message: "Please provide a valid TikTok URL" 
-      });
-    }
-
-    const tiktokData = await tiktokdl(url);
-
-    res.json({
-      status: true,
-      creator: "YourName",
-      result: tiktokData
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ 
-      status: false, 
-      message: error.message 
-    });
-  }
-});
-
-// All other routes serve the web interface
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
-
-module.exports = app;
+// Rest of your API code remains the same...
