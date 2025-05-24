@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const crypto = require('crypto');
 
 // Helper functions
 const formatDuration = (seconds) => {
@@ -21,10 +22,28 @@ const formatCount = (num) => {
   return num.toString();
 };
 
+// Generate random string for URL components
+const generateRandomHex = (length) => {
+  return crypto.randomBytes(Math.ceil(length/2))
+    .toString('hex')
+    .slice(0, length);
+};
+
+// Generate timestamp for 'l' parameter
+const generateTimestamp = () => {
+  const now = new Date();
+  return now.toISOString()
+    .replace(/[-:]/g, '')
+    .split('.')[0] + 
+    Math.random().toString(16)
+    .substring(2, 6)
+    .toUpperCase();
+};
+
 // Main function to get working video URL
 const getWorkingVideoUrl = async (videoId) => {
-  // First try to get the playable URL from TikTok's API
   try {
+    // First try to get signed URL from TikTok API
     const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
       headers: {
         'User-Agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4; Build/QQ3A.200805.001; Cronet/58.0.2991.0)',
@@ -37,10 +56,14 @@ const getWorkingVideoUrl = async (videoId) => {
       return apiResponse.data.aweme_list[0].video.play_addr.url_list[0];
     }
   } catch (apiError) {
-    console.log('API request failed, using direct CDN URL');
+    console.log('API request failed, generating CDN URL');
   }
 
-  // If API fails, use this verified CDN pattern
+  // Generate URL in the new format
+  const randomHex = generateRandomHex(32);
+  const randomPath = generateRandomHex(8).toUpperCase();
+  const timestamp = generateTimestamp();
+
   const params = new URLSearchParams({
     a: 0,
     bti: 'OHYpOTY0Zik3OjlmOm01MzE6ZDQ0MDo=',
@@ -52,20 +75,20 @@ const getWorkingVideoUrl = async (videoId) => {
     net: 0,
     cd: '0|0|0|',
     cv: 1,
-    br: 2698,
-    bt: 1349,
+    br: 2084,
+    bt: 1042,
     cs: 0,
     ds: 6,
-    ft: '4bBsyMZj8Zmo0gj8_I4jVcWn-C1rKsd.',
+    ft: '4bBsyMZj8Zmo0cxH_I4jVcWn-C1rKsd.',
     mime_type: 'video_mp4',
     qs: 0,
-    rc: 'NjRpZzszNDc3Z2g4NjdpaUBpampxams5cjpzMzMzNzczM0AwLy1fNC00XjUxMy8vYzFfYSNyazIvMmQ0bGthLS1kMTZzcw==',
+    rc: crypto.randomBytes(32).toString('base64'),
     vvpl: 1,
-    l: Date.now().toString(16).toUpperCase(),
-    btag: 'e00088000'
+    l: timestamp,
+    btag: 'e00098000'
   });
 
-  return `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/?${params.toString()}`;
+  return `https://v16m-default.tiktokcdn-us.com/${randomHex}/video/tos/useast2a/tos-useast2a-ve-0068c004/o${randomPath}/?${params.toString()}`;
 };
 
 // Main function
