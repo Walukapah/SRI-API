@@ -19,9 +19,32 @@ const extractHashtags = (text) => {
   return text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
 };
 
+// Function to get video URL from oEmbed API
+async function getOembedVideoUrl(tiktokUrl) {
+  try {
+    const response = await axios.get(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`);
+    if (response.data?.html) {
+      // Extract video URL from oEmbed HTML
+      const match = response.data.html.match(/src="([^"]+)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (error) {
+    console.log('oEmbed API failed:', error.message);
+  }
+  return null;
+}
+
 // Main function to get working video URL
-const getWorkingVideoUrl = async (videoId) => {
-  // First try to get signed URL from TikTok API
+const getWorkingVideoUrl = async (videoId, originalUrl) => {
+  // First try oEmbed API
+  const oembedUrl = await getOembedVideoUrl(originalUrl);
+  if (oembedUrl) {
+    return oembedUrl;
+  }
+
+  // Then try TikTok API
   try {
     const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
       headers: {
@@ -38,7 +61,7 @@ const getWorkingVideoUrl = async (videoId) => {
     console.log('API request failed, falling back to CDN');
   }
 
-  // If API fails, construct CDN URL with required parameters
+  // If all else fails, construct CDN URL
   const params = new URLSearchParams({
     a: 1988,
     bti: 'ODszNWYuMDE6',
@@ -67,6 +90,8 @@ const getWorkingVideoUrl = async (videoId) => {
 // Main function
 module.exports = async (url) => {
   try {
+    const originalUrl = url;
+    
     // Handle short URLs
     if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
       const response = await axios.head(url, {
@@ -84,8 +109,8 @@ module.exports = async (url) => {
     if (!videoIdMatch) throw new Error('Invalid TikTok URL');
     const videoId = videoIdMatch[1];
 
-    // Get working video URL
-    const videoUrl = await getWorkingVideoUrl(videoId);
+    // Get working video URL (tries oEmbed first)
+    const videoUrl = await getWorkingVideoUrl(videoId, originalUrl);
 
     // Get video metadata
     const { data: html } = await axios.get(`https://www.tiktok.com/@placeholder/video/${videoId}`, {
@@ -151,7 +176,10 @@ module.exports = async (url) => {
         avatar: videoData.author?.avatarLarger || "",
         avatar_thumb: videoData.author?.avatarThumb || ""
       },
-      hashtags: extractHashtags(videoData.desc || "")
+      hashtags: extractHashtags(videoData.desc || ""),
+      warnings: videoUrl.includes('tiktok.com/oembed') ? 
+        ['Used oEmbed API for video URL'] : 
+        []
     };
 
   } catch (error) {
