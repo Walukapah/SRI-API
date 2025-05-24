@@ -1,27 +1,56 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-async function getWorkingVideoUrl(videoId) {
-  try {
-    // Try webapp-prime domain first
-    const primeUrl = `https://v16-webapp-prime.us.tiktok.com/video/tos/useast2a/tos-useast2a-ve-0068c003/${videoId}/`;
-    const primeResponse = await axios.head(primeUrl, { validateStatus: null });
-    
-    if (primeResponse.status === 200) {
-      return primeUrl;
-    }
-
-    // Fallback to default CDN
-    return `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`;
-  } catch (error) {
-    console.error('Error checking video URLs:', error);
-    throw new Error('Could not find working video URL');
-  }
+// Helper function to format duration
+function formatDuration(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Helper function to detect resolution
+function getResolution(width, height) {
+  if (!width || !height) return "";
+  return height >= 1920 ? '1080p' : 
+         height >= 1280 ? '720p' : 
+         height >= 720 ? '480p' : '360p';
+}
+
+// Helper function to extract hashtags
+function extractHashtags(text) {
+  const matches = text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
+  return matches.map(tag => tag.replace('#', ''));
+}
+
+// Main function to get working video URL
+async function getWorkingVideoUrl(videoId) {
+  const endpoints = [
+    `https://v16-webapp-prime.us.tiktok.com/video/tos/useast2a/tos-useast2a-ve-0068c003/${videoId}/`,
+    `https://v16m.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
+    `https://v16m-default.tiktokcdn-us.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`,
+    `https://v19.tiktokcdn.com/${videoId}/video/tos/useast2a/tos-useast2a-ve-0068c003/`
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await axios.head(endpoint, {
+        timeout: 5000,
+        validateStatus: (status) => status === 200
+      });
+      if (response.status === 200) {
+        return endpoint;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  throw new Error('No working CDN endpoint found');
+}
+
+// Main export function
 module.exports = async function(url) {
   try {
-    // Handle short URLs
+    // Handle short URLs (vm.tiktok.com, vt.tiktok.com)
     if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
       const response = await axios.head(url, { 
         maxRedirects: 0, 
@@ -43,23 +72,23 @@ module.exports = async function(url) {
     // Get video page for metadata
     const { data: html } = await axios.get(`https://www.tiktok.com/@placeholder/video/${videoId}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Referer': 'https://www.tiktok.com/',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9'
       }
     });
 
-    // Parse metadata
+    // Parse metadata from HTML
     const $ = cheerio.load(html);
     const script = $('script#__UNIVERSAL_DATA_FOR_REHYDRATION__').html();
-    if (!script) throw new Error('TikTok data not found');
+    if (!script) throw new Error('TikTok data not found in page');
     
     const jsonData = JSON.parse(script);
     const videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;
     if (!videoData) throw new Error('Video data extraction failed');
 
-    // Format response with all metadata
+    // Format complete response
     return {
       id: videoData.id,
       title: videoData.desc || "No title",
@@ -112,22 +141,3 @@ module.exports = async function(url) {
     throw new Error('Failed to fetch TikTok data: ' + error.message);
   }
 };
-
-// Helper functions
-function formatDuration(seconds) {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function getResolution(width, height) {
-  if (!width || !height) return "";
-  return height >= 1920 ? '1080p' : 
-         height >= 1280 ? '720p' : 
-         height >= 720 ? '480p' : '360p';
-}
-
-function extractHashtags(text) {
-  const matches = text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
-  return matches.map(tag => tag.replace('#', ''));
-}
