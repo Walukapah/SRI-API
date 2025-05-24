@@ -16,7 +16,7 @@ const getResolution = (width, height) => {
 };
 
 const extractHashtags = (text) => {
-  return (text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || [];
+  return (text.match(/#[^\s!@#$%^&*(),.?":{}|<>]+/g) || []);
 };
 
 // Main function to get working video URL
