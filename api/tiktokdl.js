@@ -94,85 +94,81 @@ module.exports = async (url) => {
 
     if (!videoData) throw new Error('Video data extraction failed');
 
-    // Format the response in the clean structure you want
+    // Format response
     const response = {
-      status: true,
-      creator: "YourName",
-      result: {
-        status: "success",
-        code: 200,
-        message: "Video data retrieved successfully",
-        data: {
-          video_info: {
-            id: videoData.id,
-            title: videoData.desc || "No title",
-            caption: videoData.desc || "No caption",
-            original_url: url,
-            created_at: new Date(videoData.createTime * 1000).toISOString(),
-            created_at_pretty: new Date(videoData.createTime * 1000).toLocaleString('en-US', {
-              day: 'numeric', 
-              month: 'long', 
-              year: 'numeric', 
-              hour: '2-digit', 
-              minute: '2-digit'
-            }).replace(',', ''),
-            duration: videoData.video?.duration || 0,
-            duration_formatted: formatDuration(videoData.video?.duration || 0),
-            resolution: getResolution(videoData.video?.width, videoData.video?.height),
-            cover_image: videoData.video?.cover || "",
-            dynamic_cover: videoData.video?.dynamicCover || "",
-            width: videoData.video?.width || 0,
-            height: videoData.video?.height || 0,
-            ratio: videoData.video?.ratio || "9:16"
+      status: "success",
+      code: 200,
+      message: "Video data retrieved successfully",
+      data: {
+        video_info: {
+          id: videoData.id,
+          title: videoData.desc || "No title",
+          caption: videoData.desc || "No caption",
+          original_url: url,
+          created_at: new Date(videoData.createTime * 1000).toISOString(),
+          created_at_pretty: new Date(videoData.createTime * 1000).toLocaleString('en-US', {
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit'
+          }).replace(',', ''),
+          duration: videoData.video?.duration || 0,
+          duration_formatted: formatDuration(videoData.video?.duration || 0),
+          resolution: getResolution(videoData.video?.width, videoData.video?.height),
+          cover_image: videoData.video?.cover || "",
+          dynamic_cover: videoData.video?.dynamicCover || "",
+          width: videoData.video?.width || 0,
+          height: videoData.video?.height || 0,
+          ratio: videoData.video?.ratio || "9:16"
+        },
+        statistics: {
+          likes: videoData.stats?.diggCount || 0,
+          likes_formatted: formatCount(videoData.stats?.diggCount || 0),
+          comments: videoData.stats?.commentCount || 0,
+          shares: videoData.stats?.shareCount || 0,
+          plays: videoData.stats?.playCount || 0,
+          plays_formatted: formatCount(videoData.stats?.playCount || 0),
+          saves: videoData.stats?.collectCount || 0
+        },
+        download_links: {
+          no_watermark: {
+            url: videoUrl,
+            quality: quality,
+            server: "tikcdn.io"
           },
-          statistics: {
-            likes: videoData.stats?.diggCount || 0,
-            likes_formatted: formatCount(videoData.stats?.diggCount || 0),
-            comments: videoData.stats?.commentCount || 0,
-            shares: videoData.stats?.shareCount || 0,
-            plays: videoData.stats?.playCount || 0,
-            plays_formatted: formatCount(videoData.stats?.playCount || 0),
-            saves: videoData.stats?.collectCount || 0
-          },
-          download_links: {
-            no_watermark: {
-              url: videoUrl,
-              quality: quality,
-              server: "tikcdn.io"
-            },
-            with_watermark: {
-              url: videoData.video?.downloadAddr || "",
-              quality: "HD",
-              server: "tiktok.com"
-            }
-          },
-          music: {
-            id: videoData.music?.id || "",
-            title: videoData.music?.title || `Original Sound - ${videoData.music?.authorName || ""}`,
-            author: videoData.music?.authorName || "Unknown",
-            album: videoData.music?.album || "",
-            duration: videoData.music?.duration || 0,
-            duration_formatted: formatDuration(videoData.music?.duration || 0),
-            cover: videoData.music?.coverMedium || "",
-            play_url: videoData.music?.playUrl || ""
-          },
-          author: {
-            id: videoData.author?.id || "",
-            username: videoData.author?.uniqueId || "",
-            nickname: videoData.author?.nickname || "",
-            bio: videoData.author?.signature || "",
-            avatar: videoData.author?.avatarLarger || "",
-            followers: videoData.authorStats?.followerCount || 0,
-            following: videoData.authorStats?.followingCount || 0,
-            likes: videoData.authorStats?.heartCount || 0,
-            verified: videoData.author?.verified || false
+          with_watermark: {
+            url: videoData.video?.downloadAddr || "",
+            quality: "HD",
+            server: "tiktok.com"
           }
         },
-        meta: {
-          timestamp: new Date().toISOString(),
-          version: "1.0",
-          creator: "YourName"
+        music: {
+          id: videoData.music?.id || "",
+          title: videoData.music?.title || `Original Sound - ${videoData.music?.authorName || ""}`,
+          author: videoData.music?.authorName || "Unknown",
+          album: videoData.music?.album || "",
+          duration: videoData.music?.duration || 0,
+          duration_formatted: formatDuration(videoData.music?.duration || 0),
+          cover: videoData.music?.coverMedium || "",
+          play_url: videoData.music?.playUrl || ""
+        },
+        author: {
+          id: videoData.author?.id || "",
+          username: videoData.author?.uniqueId || "",
+          nickname: videoData.author?.nickname || "",
+          bio: videoData.author?.signature || "",
+          avatar: videoData.author?.avatarLarger || "",
+          followers: videoData.authorStats?.followerCount || 0,
+          following: videoData.authorStats?.followingCount || 0,
+          likes: videoData.authorStats?.heartCount || 0,
+          verified: videoData.author?.verified || false
         }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        version: "1.0",
+        creator: "YourName"
       }
     };
 
@@ -181,17 +177,13 @@ module.exports = async (url) => {
   } catch (error) {
     console.error('Error:', error);
     return {
-      status: false,
-      creator: "YourName",
-      result: {
-        status: "error",
-        code: 500,
-        message: error.message,
-        data: null,
-        meta: {
-          timestamp: new Date().toISOString(),
-          version: "1.0"
-        }
+      status: "error",
+      code: 500,
+      message: error.message,
+      data: null,
+      meta: {
+        timestamp: new Date().toISOString(),
+        version: "1.0"
       }
     };
   }
