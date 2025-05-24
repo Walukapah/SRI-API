@@ -23,6 +23,24 @@ const formatCount = (num) => {
 
 // Main function to get working video URL
 const getWorkingVideoUrl = async (videoId) => {
+  // First try to get the playable URL from TikTok's API
+  try {
+    const apiResponse = await axios.get(`https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id=${videoId}`, {
+      headers: {
+        'User-Agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4; Build/QQ3A.200805.001; Cronet/58.0.2991.0)',
+        'Accept': 'application/json'
+      },
+      timeout: 5000
+    });
+
+    if (apiResponse.data?.aweme_list?.[0]?.video?.play_addr?.url_list?.[0]) {
+      return apiResponse.data.aweme_list[0].video.play_addr.url_list[0];
+    }
+  } catch (apiError) {
+    console.log('API request failed, using direct CDN URL');
+  }
+
+  // If API fails, use this verified CDN pattern
   const params = new URLSearchParams({
     a: 0,
     bti: 'OHYpOTY0Zik3OjlmOm01MzE6ZDQ0MDo=',
@@ -91,8 +109,9 @@ module.exports = async (url) => {
     const videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;
     if (!videoData) throw new Error('Video data extraction failed');
 
-    // Format response to match your example exactly
+    // Format response
     return {
+      status: true,
       id: videoData.id,
       title: videoData.desc || "",
       caption: videoData.desc || "",
@@ -144,6 +163,9 @@ module.exports = async (url) => {
 
   } catch (error) {
     console.error('Error:', error);
-    throw error;
+    return {
+      status: false,
+      message: error.message
+    };
   }
 };
