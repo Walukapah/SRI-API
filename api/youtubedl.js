@@ -1,12 +1,19 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
-const { parse } = require('url');
+const ytdl = require('ytdl-core');
+const { URL } = require('url');
 
 // Helper functions
-const formatDuration = (seconds) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+const formatDuration = (duration) => {
+  const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+  const hours = (parseInt(match[1]) || 0);
+  const minutes = (parseInt(match[2]) || 0);
+  const seconds = (parseInt(match[3]) || 0;
+  
+  return [
+    hours.toString().padStart(2, '0'),
+    minutes.toString().padStart(2, '0'),
+    seconds.toString().padStart(2, '0')
+  ].filter(x => x !== '00').join(':');
 };
 
 const formatCount = (num) => {
@@ -17,24 +24,20 @@ const formatCount = (num) => {
 };
 
 const extractVideoId = (url) => {
-  const parsed = parse(url, true);
-  
-  // Handle youtu.be URLs
-  if (url.includes('youtu.be')) {
-    return parsed.pathname.slice(1);
+  try {
+    const parsed = new URL(url);
+    // Handle youtu.be URLs
+    if (parsed.hostname.includes('youtu.be')) {
+      return parsed.pathname.slice(1);
+    }
+    // Handle YouTube URLs with v parameter
+    if (parsed.searchParams.get('v')) {
+      return parsed.searchParams.get('v');
+    }
+    throw new Error('Could not extract video ID from URL');
+  } catch (e) {
+    throw new Error('Invalid YouTube URL');
   }
-  
-  // Handle YouTube URLs with v parameter
-  if (parsed.query.v) {
-    return parsed.query.v;
-  }
-  
-  // Handle YouTube share URLs
-  if (parsed.pathname.includes('/watch')) {
-    return parsed.query.v;
-  }
-  
-  throw new Error('Could not extract video ID from URL');
 };
 
 // Main function
@@ -42,39 +45,33 @@ module.exports = async (url) => {
   try {
     // Extract video ID
     const videoId = extractVideoId(url);
-    if (!videoId) throw new Error('Invalid YouTube URL');
     
-    // Get video info from YouTube
-    const embedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-    const embedResponse = await axios.get(embedUrl);
-    const embedData = embedResponse.data;
+    // Get basic info using ytdl-core
+    const info = await ytdl.getInfo(videoId);
+    const videoDetails = info.videoDetails;
+    const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
     
-    // Get video page for additional metadata
-    const videoPageUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const { data: html } = await axios.get(videoPageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
-    
-    // Parse metadata from page
-    const $ = cheerio.load(html);
-    const script = $('script').filter((i, el) => 
-      $(el).html().includes('var ytInitialPlayerResponse =')
-    ).first().html();
-    
-    if (!script) throw new Error('YouTube metadata not found');
-    
-    // Extract JSON data
-    const jsonStr = script.split('var ytInitialPlayerResponse = ')[1].split('};')[0] + '}';
-    const jsonData = JSON.parse(jsonStr);
-    
-    const videoDetails = jsonData.videoDetails;
-    const microformat = jsonData.microformat.playerMicroformatRenderer;
-    
-    // Format download URLs (using external service)
-    const downloadBaseUrl = `https://ytdl-api.vercel.app/api/download`;
-    
+    // Format download links
+    const downloadLinks = {
+      video: formats
+        .filter(f => f.hasVideo && f.hasAudio)
+        .map(f => ({
+          url: f.url,
+          quality: f.qualityLabel || 'unknown',
+          type: f.mimeType.split(';')[0],
+          bitrate: f.bitrate,
+          size: f.contentLength ? `${Math.round(f.contentLength / (1024 * 1024))}MB` : 'unknown'
+        })),
+      audio: formats
+        .filter(f => !f.hasVideo && f.hasAudio)
+        .map(f => ({
+          url: f.url,
+          quality: f.audioBitrate ? `${f.audioBitrate}kbps` : 'unknown',
+          type: f.mimeType.split(';')[0],
+          bitrate: f.bitrate
+        }))
+    };
+
     // Format response
     const response = {
       status: "success",
@@ -84,43 +81,36 @@ module.exports = async (url) => {
         video_info: {
           id: videoId,
           title: videoDetails.title,
-          description: videoDetails.shortDescription,
+          description: videoDetails.description,
           original_url: url,
-          created_at: microformat.publishDate || new Date().toISOString(),
-          duration: parseInt(videoDetails.lengthSeconds),
-          duration_formatted: formatDuration(parseInt(videoDetails.lengthSeconds)),
-          keywords: videoDetails.keywords || [],
-          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          duration: formatDuration(videoDetails.lengthSeconds),
+          duration_seconds: parseInt(videoDetails.lengthSeconds),
+          thumbnail: videoDetails.thumbnails.sort((a, b) => b.width - a.width)[0].url,
           views: parseInt(videoDetails.viewCount) || 0,
           views_formatted: formatCount(parseInt(videoDetails.viewCount) || 0),
-          is_live: videoDetails.isLiveContent || false
+          keywords: videoDetails.keywords || [],
+          is_live: videoDetails.isLiveContent,
+          is_private: videoDetails.isPrivate,
+          is_unlisted: videoDetails.isUnlisted
         },
         statistics: {
-          likes: 0, // YouTube doesn't show this in the initial response
+          likes: parseInt(videoDetails.likes) || 0,
+          dislikes: parseInt(videoDetails.dislikes) || 0,
           comments: 0, // Would need additional API call
-          shares: 0
+          average_rating: videoDetails.averageRating || 0
         },
-        download_links: {
-          video: {
-            url: `${downloadBaseUrl}?id=${videoId}&type=video`,
-            quality: 'HD',
-            formats: ['mp4', 'webm', '3gp']
-          },
-          audio: {
-            url: `${downloadBaseUrl}?id=${videoId}&type=audio`,
-            formats: ['mp3', 'm4a', 'ogg']
-          }
-        },
+        download_links: downloadLinks,
         channel: {
           id: videoDetails.channelId,
-          name: videoDetails.author,
-          url: `https://www.youtube.com/channel/${videoDetails.channelId}`,
-          avatar: embedData.author_url ? `${embedData.author_url}/avatar` : ''
+          name: videoDetails.author.name,
+          url: videoDetails.author.channel_url,
+          subscriber_count: formatCount(videoDetails.author.subscriber_count),
+          verified: videoDetails.author.verified
         }
       },
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0",
+        version: "1.1",
         creator: "YourName"
       }
     };
@@ -136,7 +126,7 @@ module.exports = async (url) => {
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0"
+        version: "1.1"
       }
     };
   }
