@@ -21,17 +21,23 @@ app.use(limiter);
 // YouTube Download Endpoint
 app.get('/download/youtubedl', async (req, res) => {
   try {
-    if (!req.query.url) {
-      return res.status(400).json({
-        success: false,
-        message: "URL parameter is required"
+    const url = req.query.url;
+    
+    if (!url || !(url.includes('youtube.com') || url.includes('youtu.be'))) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Please provide a valid YouTube URL" 
       });
     }
-    const result = await youtubedl(req.query.url);
-    res.json(result);
+
+    const youtubeData = await youtubedl(url);
+
+    res.json(youtubeData);
+
   } catch (error) {
-    res.status(500).json({
-      success: false,
+    console.error('YouTube API Error:', error);
+    res.status(500).json({ 
+      status: false, 
       message: error.message
     });
   }
