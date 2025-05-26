@@ -1,5 +1,4 @@
 const ytdl = require('ytdl-core');
-const ytdlDiscord = require('ytdl-core-discord');
 const { URL } = require('url');
 
 // Helper functions
@@ -35,18 +34,13 @@ module.exports = async (url) => {
   try {
     const videoId = extractVideoId(url);
     
-    let info;
-    try {
-      info = await ytdl.getInfo(videoId, {
-        requestOptions: {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          }
+    const info = await ytdl.getInfo(videoId, {
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-      });
-    } catch (error) {
-      info = await ytdlDiscord.getInfo(videoId);
-    }
+      }
+    });
 
     const videoDetails = info.videoDetails;
     
@@ -80,7 +74,7 @@ module.exports = async (url) => {
     return {
       status: "error",
       code: error.statusCode || 500,
-      message: "Failed to fetch video info. YouTube may have blocked this request.",
+      message: "Failed to fetch video info. Please try again later.",
       data: null
     };
   }
