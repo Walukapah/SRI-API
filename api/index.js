@@ -19,11 +19,12 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // YouTube Download Endpoint
+// Add this endpoint with your other routes
 app.get('/download/youtubedl', async (req, res) => {
   try {
     const url = req.query.url;
     
-    if (!url || !(url.includes('youtube.com') || url.includes('youtu.be'))) {
+    if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
       return res.status(400).json({ 
         status: false, 
         message: "Please provide a valid YouTube URL" 
@@ -32,13 +33,18 @@ app.get('/download/youtubedl', async (req, res) => {
 
     const youtubeData = await youtubedl(url);
 
-    res.json(youtubeData);
+    res.json({
+      status: true,
+      creator: "YourName",
+      result: youtubeData
+    });
 
   } catch (error) {
-    console.error('YouTube API Error:', error);
+    console.error('API Error:', error);
     res.status(500).json({ 
       status: false, 
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
