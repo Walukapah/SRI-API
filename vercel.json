@@ -20,12 +20,15 @@
       "dest": "api/index.js"
     },
     {
-      "src": "/api/.*",
+      "src": "/api/download/(audio|video)",
       "dest": "api/index.js"
     },
     {
       "src": "/(.*)",
       "dest": "public/$1"
     }
-  ]
+  ],
+  "env": {
+    "YTDL_NO_UPDATE": "1"
+  }
 }
