@@ -4,22 +4,24 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/download/youtubedl",
-      "methods": ["GET"],
-      "dest": "/api/index.js"
+      "src": "/download/tiktokdl",
+      "dest": "api/index.js"
     },
     {
-      "src": "/download/tiktokdl",
-      "methods": ["GET"],
-      "dest": "/api/index.js"
+      "src": "/download/youtubedl",
+      "dest": "api/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "public/$1"
     }
   ]
 }
