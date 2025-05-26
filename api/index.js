@@ -2,6 +2,7 @@
 const express = require('express');
 const path = require('path');
 const tiktokdl = require('./tiktokdl');
+const youtubedl = require('./youtubedl');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
@@ -28,7 +29,7 @@ app.use(limiter);
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API endpoint
+// TikTok API endpoint
 app.get('/download/tiktokdl', async (req, res) => {
   try {
     const url = req.query.url;
@@ -46,6 +47,36 @@ app.get('/download/tiktokdl', async (req, res) => {
       status: true,
       creator: "YourName",
       result: tiktokData
+    });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ 
+      status: false, 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// YouTube API endpoint
+app.get('/download/youtubedl', async (req, res) => {
+  try {
+    const url = req.query.url;
+    
+    if (!url || !(url.includes('youtube.com') || url.includes('youtu.be'))) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Please provide a valid YouTube URL" 
+      });
+    }
+
+    const youtubeData = await youtubedl(url);
+
+    res.json({
+      status: true,
+      creator: "YourName",
+      result: youtubeData
     });
 
   } catch (error) {
