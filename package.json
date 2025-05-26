@@ -1,19 +1,30 @@
 {
-  "name": "social-media-downloader",
+  "name": "video-downloader-api",
   "version": "1.0.0",
+  "description": "Video Downloader API for Vercel (TikTok + YouTube)",
   "main": "api/index.js",
   "scripts": {
-    "start": "node api/index.js"
+    "start": "node api/index.js",
+    "dev": "nodemon api/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "ytdl-core": "^4.11.5",
     "axios": "^1.6.7",
     "cheerio": "^1.0.0-rc.12",
-    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "express-rate-limit": "^6.8.1"
+    "express-rate-limit": "^6.7.0",
+    "cors": "^2.8.5"
   },
-  "engines": {
-    "node": "18.x"
-  }
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "tiktok",
+    "youtube",
+    "downloader",
+    "api",
+    "vercel"
+  ],
+  "author": "YourName",
+  "license": "MIT"
 }
