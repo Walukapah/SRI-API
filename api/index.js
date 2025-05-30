@@ -19,34 +19,28 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // YouTube Download Endpoint
-// API endpoint එකක් ලෙස එක් කරන්න
+// In your index.js
 app.get('/download/youtubedl', async (req, res) => {
   try {
-    const { url, type = 'mp4', quality = '720p' } = req.query;
+    const url = req.query.url;
     
-    if (!url) {
+    if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
       return res.status(400).json({ 
         status: false, 
-        message: "YouTube URL is required" 
+        message: "Please provide a valid YouTube URL" 
       });
     }
 
-    const result = await y2mate(url, type, quality);
-    
-    if (result.status === 'error') {
-      return res.status(400).json(result);
-    }
+    const youtubeData = await youtubedl(url);
 
-    res.json({
-      status: true,
-      result: result
-    });
+    res.json(youtubeData);
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('YouTube API Error:', error);
     res.status(500).json({ 
       status: false, 
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
