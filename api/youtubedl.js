@@ -16,6 +16,24 @@ const formatCount = (num) => {
   return num.toString();
 };
 
+// Function to get final download URL
+const getFinalDownloadUrl = async (previewUrl) => {
+  try {
+    const response = await axios.get(previewUrl, {
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 400
+    });
+    
+    if (response.headers.location) {
+      return response.headers.location;
+    }
+    return previewUrl;
+  } catch (error) {
+    console.error('Error getting final URL:', error);
+    return previewUrl;
+  }
+};
+
 // Main function to get video data from iloveyt.net
 const getVideoData = async (videoUrl) => {
   const data = { url: videoUrl };
@@ -44,7 +62,24 @@ const getVideoData = async (videoUrl) => {
       { headers }
     );
     
-    return response.data;
+    // Get final download URLs for each media item
+    const mediaItemsWithUrls = await Promise.all(
+      response.data.api.mediaItems.map(async (item) => {
+        const fileUrl = await getFinalDownloadUrl(item.mediaUrl);
+        return {
+          ...item,
+          fileUrl: fileUrl
+        };
+      })
+    );
+
+    return {
+      ...response.data,
+      api: {
+        ...response.data.api,
+        mediaItems: mediaItemsWithUrls
+      }
+    };
   } catch (error) {
     console.error('Error fetching from iloveyt.net:', error);
     throw new Error('Failed to fetch video data from iloveyt.net');
@@ -54,7 +89,7 @@ const getVideoData = async (videoUrl) => {
 // Main function
 module.exports = async (url) => {
   try {
-    // Extract video ID from various YouTube URL formats
+    // Extract video ID
     const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
     if (!videoIdMatch) throw new Error('Invalid YouTube URL');
     const videoId = videoIdMatch[1];
@@ -62,11 +97,11 @@ module.exports = async (url) => {
     // Get video data from iloveyt.net
     const videoData = await getVideoData(url);
     
-    if (!videoData || !videoData.api || !videoData.api.status === "OK") {
+    if (!videoData || !videoData.api || videoData.api.status !== "OK") {
       throw new Error('Failed to process YouTube video');
     }
 
-    // Format response with direct download links
+    // Format response
     const response = {
       status: "success",
       code: 200,
@@ -91,19 +126,21 @@ module.exports = async (url) => {
           comments: videoData.api.mediaStats?.commentsCount || 0,
           comments_formatted: formatCount(videoData.api.mediaStats?.commentsCount || 0)
         },
-        download_links: videoData.api.mediaItems?.map(item => ({
-          processId: item.mediaId,
-          status: "Completed",
-          estimatedFileSize: item.mediaFileSize,
-          fileName: `${videoData.api.title.replace(/[^a-zA-Z0-9]/g, '-')}_${item.mediaQuality}.${item.mediaExtension.toLowerCase()}`,
-          fileSize: item.mediaFileSize,
-          fileUrl: item.mediaUrl, // This is the direct download link
-          type: item.type,
-          quality: item.mediaQuality,
-          resolution: item.mediaRes,
-          duration: item.mediaDuration,
-          extension: item.mediaExtension
-        })) || [],
+        download_links: {
+          status: true,
+          items: videoData.api.mediaItems?.map(item => ({
+            type: item.type,
+            quality: item.mediaQuality,
+            url: item.mediaUrl,
+            fileUrl: item.fileUrl, // This is the direct download link
+            previewUrl: item.mediaPreviewUrl,
+            thumbnail: item.mediaThumbnail,
+            resolution: item.mediaRes,
+            duration: item.mediaDuration,
+            extension: item.mediaExtension,
+            size: item.mediaFileSize
+          })) || []
+        },
         author: {
           name: videoData.api.userInfo?.name || "Unknown",
           username: videoData.api.userInfo?.username || "",
