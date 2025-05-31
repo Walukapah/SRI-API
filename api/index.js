@@ -19,7 +19,6 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // YouTube Download Endpoint
-// In your index.js
 app.get('/download/youtubedl', async (req, res) => {
   try {
     const url = req.query.url;
@@ -33,10 +32,14 @@ app.get('/download/youtubedl', async (req, res) => {
 
     const youtubeData = await youtubedl(url);
 
-    res.json(youtubeData);
+    res.json({
+      status: true,
+      creator: "YourName",
+      result: youtubeData
+    });
 
   } catch (error) {
-    console.error('YouTube API Error:', error);
+    console.error('API Error:', error);
     res.status(500).json({ 
       status: false, 
       message: error.message,
