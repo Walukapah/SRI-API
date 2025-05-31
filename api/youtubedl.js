@@ -16,24 +16,6 @@ const formatCount = (num) => {
   return num.toString();
 };
 
-// Function to get final download URL
-const getFinalDownloadUrl = async (previewUrl) => {
-  try {
-    const response = await axios.get(previewUrl, {
-      maxRedirects: 0,
-      validateStatus: (status) => status >= 200 && status < 400
-    });
-    
-    if (response.headers.location) {
-      return response.headers.location;
-    }
-    return previewUrl;
-  } catch (error) {
-    console.error('Error getting final URL:', error);
-    return previewUrl;
-  }
-};
-
 // Main function to get video data from iloveyt.net
 const getVideoData = async (videoUrl) => {
   const data = { url: videoUrl };
@@ -62,24 +44,48 @@ const getVideoData = async (videoUrl) => {
       { headers }
     );
     
-    // Get final download URLs for each media item
-    const mediaItemsWithUrls = await Promise.all(
-      response.data.api.mediaItems.map(async (item) => {
-        const fileUrl = await getFinalDownloadUrl(item.mediaUrl);
-        return {
-          ...item,
-          fileUrl: fileUrl
-        };
-      })
-    );
-
-    return {
-      ...response.data,
-      api: {
-        ...response.data.api,
-        mediaItems: mediaItemsWithUrls
-      }
-    };
+    // Process the response to extract direct download links
+    if (response.data && response.data.api && response.data.api.mediaItems) {
+      const processedItems = await Promise.all(
+        response.data.api.mediaItems.map(async (item) => {
+          if (item.mediaUrl && !item.mediaUrl.includes('videoplayback')) {
+            // This is already a direct link
+            return {
+              ...item,
+              d_link: item.mediaUrl
+            };
+          } else if (item.mediaPreviewUrl) {
+            // Need to get the direct link from the preview URL
+            try {
+              const downloadResponse = await axios.get(item.mediaPreviewUrl, {
+                maxRedirects: 0,
+                validateStatus: (status) => status >= 200 && status < 400
+              });
+              
+              if (downloadResponse.headers.location) {
+                return {
+                  ...item,
+                  d_link: downloadResponse.headers.location
+                };
+              }
+            } catch (error) {
+              console.error('Error getting direct link:', error);
+            }
+          }
+          return item;
+        })
+      );
+      
+      return {
+        ...response.data,
+        api: {
+          ...response.data.api,
+          mediaItems: processedItems
+        }
+      };
+    }
+    
+    return response.data;
   } catch (error) {
     console.error('Error fetching from iloveyt.net:', error);
     throw new Error('Failed to fetch video data from iloveyt.net');
@@ -89,7 +95,7 @@ const getVideoData = async (videoUrl) => {
 // Main function
 module.exports = async (url) => {
   try {
-    // Extract video ID
+    // Extract video ID from various YouTube URL formats
     const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
     if (!videoIdMatch) throw new Error('Invalid YouTube URL');
     const videoId = videoIdMatch[1];
@@ -97,7 +103,7 @@ module.exports = async (url) => {
     // Get video data from iloveyt.net
     const videoData = await getVideoData(url);
     
-    if (!videoData || !videoData.api || videoData.api.status !== "OK") {
+    if (!videoData || !videoData.api || !videoData.api.status === "OK") {
       throw new Error('Failed to process YouTube video');
     }
 
@@ -132,7 +138,7 @@ module.exports = async (url) => {
             type: item.type,
             quality: item.mediaQuality,
             url: item.mediaUrl,
-            fileUrl: item.fileUrl, // This is the direct download link
+            d_link: item.d_link || item.mediaPreviewUrl, // This will contain the direct download link
             previewUrl: item.mediaPreviewUrl,
             thumbnail: item.mediaThumbnail,
             resolution: item.mediaRes,
