@@ -44,47 +44,6 @@ const getVideoData = async (videoUrl) => {
       { headers }
     );
     
-    // Process the response to extract direct download links
-    if (response.data && response.data.api && response.data.api.mediaItems) {
-      const processedItems = await Promise.all(
-        response.data.api.mediaItems.map(async (item) => {
-          if (item.mediaUrl && !item.mediaUrl.includes('videoplayback')) {
-            // This is already a direct link
-            return {
-              ...item,
-              d_link: item.mediaUrl
-            };
-          } else if (item.mediaPreviewUrl) {
-            // Need to get the direct link from the preview URL
-            try {
-              const downloadResponse = await axios.get(item.mediaPreviewUrl, {
-                maxRedirects: 0,
-                validateStatus: (status) => status >= 200 && status < 400
-              });
-              
-              if (downloadResponse.headers.location) {
-                return {
-                  ...item,
-                  d_link: downloadResponse.headers.location
-                };
-              }
-            } catch (error) {
-              console.error('Error getting direct link:', error);
-            }
-          }
-          return item;
-        })
-      );
-      
-      return {
-        ...response.data,
-        api: {
-          ...response.data.api,
-          mediaItems: processedItems
-        }
-      };
-    }
-    
     return response.data;
   } catch (error) {
     console.error('Error fetching from iloveyt.net:', error);
@@ -103,9 +62,21 @@ module.exports = async (url) => {
     // Get video data from iloveyt.net
     const videoData = await getVideoData(url);
     
-    if (!videoData || !videoData.api || !videoData.api.status === "OK") {
+    if (!videoData || !videoData.api || videoData.api.status !== "OK") {
       throw new Error('Failed to process YouTube video');
     }
+
+    // Get direct download link from POST response
+    const directDownloadResponse = await axios.post(
+      "https://iloveyt.net/proxy.php",
+      qs.stringify({ url }),
+      { headers: {
+        "Accept": "*/*",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
+        "X-Requested-With": "XMLHttpRequest"
+      }}
+    );
 
     // Format response
     const response = {
@@ -134,18 +105,30 @@ module.exports = async (url) => {
         },
         download_links: {
           status: true,
-          items: videoData.api.mediaItems?.map(item => ({
-            type: item.type,
-            quality: item.mediaQuality,
-            url: item.mediaUrl,
-            d_link: item.d_link || item.mediaPreviewUrl, // This will contain the direct download link
-            previewUrl: item.mediaPreviewUrl,
-            thumbnail: item.mediaThumbnail,
-            resolution: item.mediaRes,
-            duration: item.mediaDuration,
-            extension: item.mediaExtension,
-            size: item.mediaFileSize
-          })) || []
+          // Include both the original media items and the direct download link
+          items: [
+            ...(videoData.api.mediaItems?.map(item => ({
+              type: item.type,
+              quality: item.mediaQuality,
+              url: item.mediaUrl,
+              previewUrl: item.mediaPreviewUrl,
+              thumbnail: item.mediaThumbnail,
+              resolution: item.mediaRes,
+              duration: item.mediaDuration,
+              extension: item.mediaExtension,
+              size: item.mediaFileSize
+            })) || []),
+            // Add the direct download link from POST response
+            {
+              type: "Direct Download",
+              quality: "HD",
+              url: directDownloadResponse.data.fileUrl,
+              fileName: directDownloadResponse.data.fileName,
+              size: directDownloadResponse.data.fileSize,
+              extension: "mp4",
+              source: "POST response"
+            }
+          ]
         },
         author: {
           name: videoData.api.userInfo?.name || "Unknown",
@@ -163,7 +146,8 @@ module.exports = async (url) => {
         timestamp: new Date().toISOString(),
         version: "1.0",
         creator: "YourName",
-        service: "iLoveYT.net"
+        service: "iLoveYT.net",
+        processId: directDownloadResponse.data.processId || null
       }
     };
 
