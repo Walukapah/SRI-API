@@ -66,7 +66,7 @@ module.exports = async (url) => {
       throw new Error('Failed to process YouTube video');
     }
 
-    // Format response similar to your example
+    // Format response with direct download links
     const response = {
       status: "success",
       code: 200,
@@ -91,20 +91,19 @@ module.exports = async (url) => {
           comments: videoData.api.mediaStats?.commentsCount || 0,
           comments_formatted: formatCount(videoData.api.mediaStats?.commentsCount || 0)
         },
-        download_links: {
-          status: true,
-          items: videoData.api.mediaItems?.map(item => ({
-            type: item.type,
-            quality: item.mediaQuality,
-            url: item.mediaUrl,
-            previewUrl: item.mediaPreviewUrl,
-            thumbnail: item.mediaThumbnail,
-            resolution: item.mediaRes,
-            duration: item.mediaDuration,
-            extension: item.mediaExtension,
-            size: item.mediaFileSize
-          })) || []
-        },
+        download_links: videoData.api.mediaItems?.map(item => ({
+          processId: item.mediaId,
+          status: "Completed",
+          estimatedFileSize: item.mediaFileSize,
+          fileName: `${videoData.api.title.replace(/[^a-zA-Z0-9]/g, '-')}_${item.mediaQuality}.${item.mediaExtension.toLowerCase()}`,
+          fileSize: item.mediaFileSize,
+          fileUrl: item.mediaUrl, // This is the direct download link
+          type: item.type,
+          quality: item.mediaQuality,
+          resolution: item.mediaRes,
+          duration: item.mediaDuration,
+          extension: item.mediaExtension
+        })) || [],
         author: {
           name: videoData.api.userInfo?.name || "Unknown",
           username: videoData.api.userInfo?.username || "",
