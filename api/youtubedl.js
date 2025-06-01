@@ -19,9 +19,19 @@ const getVideoData = async (videoUrl) => {
   const data = { url: videoUrl };
   const headers = {
     "Accept": "*/*",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
     "Content-Type": "application/x-www-form-urlencoded",
+    "Origin": "https://iloveyt.net",
     "Referer": "https://iloveyt.net/en2",
-    "User-Agent": "Mozilla/5.0"
+    "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
+    "Sec-Ch-Ua-Mobile": "?1",
+    "Sec-Ch-Ua-Platform": '"Android"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
+    "X-Requested-With": "XMLHttpRequest"
   };
 
   try {
