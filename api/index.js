@@ -9,6 +9,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.set('trust proxy', 1);
+app.set('json spaces', 2); // Enable pretty printing with 2-space indentation
 
 // Rate limiting
 const limiter = rateLimit({
