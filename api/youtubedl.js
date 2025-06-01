@@ -1,5 +1,4 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
 const qs = require('qs');
 
 // Helper functions
@@ -16,40 +15,54 @@ const formatCount = (num) => {
   return num.toString();
 };
 
-// Main function to get video data from iloveyt.net
-const getVideoData = async (videoUrl) => {
+const proxyUrl = "https://iloveyt.net/proxy.php";
+
+const headers = {
+  "Accept": "*/*",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Content-Type": "application/x-www-form-urlencoded",
+  "Cookie": "PHPSESSID=mu9fjav2lmuc7ln7drffptvhgd",
+  "Origin": "https://iloveyt.net",
+  "Referer": "https://iloveyt.net/en2",
+  "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
+  "Sec-Ch-Ua-Mobile": "?1",
+  "Sec-Ch-Ua-Platform": '"Android"',
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+  "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
+  "X-Requested-With": "XMLHttpRequest"
+};
+
+async function getDirectDownloadUrl(mediaUrl) {
+  try {
+    const response = await axios.get(mediaUrl, {
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 400
+    });
+    
+    if (response.status === 302 || response.status === 301) {
+      return response.headers.location;
+    }
+    return mediaUrl; // Return original if no redirect
+  } catch (err) {
+    console.log(`Error fetching direct URL: ${err.message}`);
+    return null;
+  }
+}
+
+async function getVideoData(videoUrl) {
   const data = { url: videoUrl };
-  
-  const headers = {
-    "Accept": "*/*",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Origin": "https://iloveyt.net",
-    "Referer": "https://iloveyt.net/en2",
-    "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
-    "Sec-Ch-Ua-Mobile": "?1",
-    "Sec-Ch-Ua-Platform": '"Android"',
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-origin",
-    "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-    "X-Requested-With": "XMLHttpRequest"
-  };
 
   try {
-    const response = await axios.post(
-      "https://iloveyt.net/proxy.php",
-      qs.stringify(data),
-      { headers }
-    );
-    
+    const response = await axios.post(proxyUrl, qs.stringify(data), { headers });
     return response.data;
   } catch (error) {
-    console.error('Error fetching from iloveyt.net:', error);
+    console.error('Error fetching from iloveyt.net:', error.message);
     throw new Error('Failed to fetch video data from iloveyt.net');
   }
-};
+}
 
 // Main function
 module.exports = async (url) => {
@@ -66,17 +79,15 @@ module.exports = async (url) => {
       throw new Error('Failed to process YouTube video');
     }
 
-    // Get direct download link from POST response
-    const directDownloadResponse = await axios.post(
-      "https://iloveyt.net/proxy.php",
-      qs.stringify({ url }),
-      { headers: {
-        "Accept": "*/*",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-        "X-Requested-With": "XMLHttpRequest"
-      }}
-    );
+    // Process media items to get direct URLs
+    const processedItems = [];
+    for (const item of videoData.api.mediaItems) {
+      const directUrl = await getDirectDownloadUrl(item.mediaUrl);
+      processedItems.push({
+        ...item,
+        directUrl: directUrl || item.mediaUrl
+      });
+    }
 
     // Format response
     const response = {
@@ -92,8 +103,8 @@ module.exports = async (url) => {
           previewUrl: videoData.api.previewUrl || "",
           imagePreviewUrl: videoData.api.imagePreviewUrl || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
           permanentLink: videoData.api.permanentLink || `https://youtu.be/${videoId}`,
-          duration: videoData.api.mediaItems?.[0]?.mediaDuration || 0,
-          duration_formatted: videoData.api.mediaItems?.[0]?.mediaDuration || "00:00"
+          duration: videoData.api.mediaItems?.[0]?.mediaDuration || "00:00",
+          created_at: new Date().toISOString()
         },
         statistics: {
           views: videoData.api.mediaStats?.viewsCount || 0,
@@ -104,50 +115,50 @@ module.exports = async (url) => {
           comments_formatted: formatCount(videoData.api.mediaStats?.commentsCount || 0)
         },
         download_links: {
-          status: true,
-          // Include both the original media items and the direct download link
-          items: [
-            ...(videoData.api.mediaItems?.map(item => ({
-              type: item.type,
+          no_watermark: {
+            items: processedItems.filter(item => item.type === "Video").map(item => ({
               quality: item.mediaQuality,
-              url: item.mediaUrl,
+              resolution: item.mediaRes,
+              url: item.directUrl,
               previewUrl: item.mediaPreviewUrl,
               thumbnail: item.mediaThumbnail,
-              resolution: item.mediaRes,
               duration: item.mediaDuration,
               extension: item.mediaExtension,
               size: item.mediaFileSize
-            })) || []),
-            // Add the direct download link from POST response
-            {
-              type: "Direct Download",
-              quality: "HD",
-              url: directDownloadResponse.data.fileUrl,
-              fileName: directDownloadResponse.data.fileName,
-              size: directDownloadResponse.data.fileSize,
-              extension: "mp4",
-              source: "POST response"
-            }
-          ]
+            })),
+            server: "iloveyt.net"
+          },
+          audio_only: {
+            items: processedItems.filter(item => item.type === "Audio").map(item => ({
+              quality: item.mediaQuality,
+              url: item.directUrl,
+              duration: item.mediaDuration,
+              extension: item.mediaExtension,
+              size: item.mediaFileSize
+            })),
+            server: "iloveyt.net"
+          }
         },
         author: {
-          name: videoData.api.userInfo?.name || "Unknown",
+          id: videoData.api.userInfo?.userId || "",
           username: videoData.api.userInfo?.username || "",
-          userId: videoData.api.userInfo?.userId || "",
-          avatar: videoData.api.userInfo?.userAvatar || "",
+          nickname: videoData.api.userInfo?.name || "Unknown",
           bio: videoData.api.userInfo?.userBio || "",
-          verified: videoData.api.userInfo?.isVerified || false,
+          avatar: videoData.api.userInfo?.userAvatar || "",
           followers: videoData.api.mediaStats?.followersCount || 0,
           followers_formatted: formatCount(videoData.api.mediaStats?.followersCount || 0),
+          verified: videoData.api.userInfo?.isVerified || false,
           country: videoData.api.userInfo?.accountCountry || ""
+        },
+        music: {
+          title: videoData.api.title || "No title",
+          duration: videoData.api.mediaItems?.[0]?.mediaDuration || "00:00"
         }
       },
       meta: {
         timestamp: new Date().toISOString(),
         version: "1.0",
-        creator: "YourName",
-        service: "iLoveYT.net",
-        processId: directDownloadResponse.data.processId || null
+        creator: "YourName"
       }
     };
 
