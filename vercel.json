@@ -20,6 +20,10 @@
       "dest": "api/index.js"
     },
     {
+      "src": "/download/instagramdl",
+      "dest": "api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
