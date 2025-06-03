@@ -85,15 +85,8 @@ app.get('/download/instagramdl', async (req, res) => {
         message: "URL parameter is required"
       });
     }
-    
-    const instagramData = await instagramdl(req.query.url);
-    
-    res.json({
-      status: true,
-      creator: "WALUKA🇱🇰",
-      result: instagramData
-    });
-    
+    const result = await instagramdl(req.query.url);
+    res.json(result);
   } catch (error) {
     res.status(500).json({
       success: false,
