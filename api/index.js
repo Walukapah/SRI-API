@@ -3,6 +3,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const youtubedl = require('./youtubedl');
 const tiktokdl = require('./tiktokdl');
+const instagramdl = require('./instagramdl');
 
 const app = express();
 
@@ -35,7 +36,7 @@ app.get('/download/youtubedl', async (req, res) => {
 
     res.json({
       status: true,
-      creator: "YourName",
+      creator: "WALUKA🇱🇰",
       result: youtubeData
     });
 
@@ -58,8 +59,41 @@ app.get('/download/tiktokdl', async (req, res) => {
         message: "URL parameter is required"
       });
     }
-    const result = await tiktokdl(req.query.url);
-    res.json(result);
+    
+    const tiktokData = await tiktokdl(req.query.url);
+    
+    res.json({
+      status: true,
+      creator: "WALUKA🇱🇰",
+      result: tiktokData
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Instagram Download Endpoint
+app.get('/download/instagramdl', async (req, res) => {
+  try {
+    if (!req.query.url) {
+      return res.status(400).json({
+        success: false,
+        message: "URL parameter is required"
+      });
+    }
+    
+    const instagramData = await instagramdl(req.query.url);
+    
+    res.json({
+      status: true,
+      creator: "WALUKA🇱🇰",
+      result: instagramData
+    });
+    
   } catch (error) {
     res.status(500).json({
       success: false,
