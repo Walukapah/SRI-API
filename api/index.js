@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const youtubedl = require('./youtubedl');
 const tiktokdl = require('./tiktokdl');
 const instagramdl = require('./instagramdl');
+const pornhubdl = require('./pronhubdl');
 
 const app = express();
 
@@ -56,7 +57,7 @@ app.get('/download/tiktokdl', async (req, res) => {
     if (!req.query.url) {
       return res.status(400).json({
         success: false,
-        message: "URL parameter is required"
+        message: "Please provide a valid Tiktok URL"
       });
     }
     
@@ -82,15 +83,49 @@ app.get('/download/instagramdl', async (req, res) => {
     if (!req.query.url) {
       return res.status(400).json({
         success: false,
-        message: "URL parameter is required"
+        message: "Please provide a valid Instagram URL"
       });
     }
-    const result = await instagramdl(req.query.url);
-    res.json(result);
+    const instagramData = await instagramdl(req.query.url);
+
+    res.json({
+      status: true,
+      creator: "WALUKA🇱🇰",
+      result: instagramData
+    });
+    
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// Pornhub Download Endpoint
+app.get('/download/pornhubdl', async (req, res) => {
+  try {
+    const url = req.query.url;
+    if (!url || !url.includes('pornhub.com')) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Please provide a valid Pornhub URL" 
+      });
+    }
+
+    const pornhubData = await pornhubdl(url);
+
+    res.json({
+      status: true,
+      creator: "WALUKA🇱🇰",
+      result: pornhubData
+    });
+
+  } catch (error) {
+    console.error('PornhubDL Error:', error);
+    res.status(500).json({ 
+      status: false, 
+      message: error.message 
     });
   }
 });
