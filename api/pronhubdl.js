@@ -1,4 +1,3 @@
-// pronhubdl.js
 const { PornHub } = require('pornhub.js');
 const axios = require('axios');
 
@@ -6,7 +5,12 @@ const pornhub = new PornHub();
 
 const getPornhubVideo = async (url) => {
   try {
-    const meta = await pornhub.video(url);
+    let meta = {};
+    try {
+      meta = await pornhub.video(url);
+    } catch (e) {
+      console.warn("⚠️ Warning: pornhub.js failed to fetch metadata. Using fallback values.");
+    }
 
     const response = await axios.post('https://xxx.xxvid.download/xxx-download/video-info-v3', {
       app_id: 'pornhub_downloader',
@@ -34,26 +38,26 @@ const getPornhubVideo = async (url) => {
 
     return {
       status: true,
-      title: meta.title,
-      url: meta.url,
-      thumbnail: meta.thumb,
-      preview: meta.preview,
-      duration: meta.durationFormatted,
-      views: meta.views,
+      title: meta.title || dlData?.title || 'Pornhub',
+      url: meta.url || url,
+      thumbnail: meta.thumb || dlData?.img || '',
+      preview: meta.preview || '',
+      duration: meta.durationFormatted || '00:00',
+      views: meta.views || 0,
       likes: meta.vote?.up || 0,
       rating: meta.vote?.rating || 0,
-      uploadDate: meta.uploadDate,
-      stars: meta.pornstars,
-      tags: meta.tags,
-      categories: meta.categories,
+      uploadDate: meta.uploadDate || new Date(0).toISOString(),
+      stars: meta.pornstars || [],
+      tags: meta.tags || [],
+      categories: meta.categories || [],
       uploader: {
         name: meta.provider?.username || "Unknown",
-        profile: `https://www.pornhub.com${meta.provider?.url || ''}`
+        profile: meta.provider?.url ? `https://www.pornhub.com${meta.provider.url}` : 'https://www.pornhub.com'
       },
       videos: [
         ...(dlData?.videos?.map(v => ({
           type: "mp4",
-          quality: v.quality,
+          quality: `${v.quality} - ${v.quality}`,
           url: v.url
         })) || []),
         ...(meta.mediaDefinitions?.map(m => ({
