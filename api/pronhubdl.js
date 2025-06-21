@@ -1,37 +1,31 @@
-// pronhubdl.js
+// pornhubdl.js
 const { PornHub } = require('pornhub.js');
-
 const pornhub = new PornHub();
 
-const getPornhubVideo = async (url) => {
+module.exports = async (url) => {
+  if (!url || !url.includes('pornhub.com')) {
+    throw new Error('Invalid Pornhub URL');
+  }
+
   try {
-    if (!url.includes('pornhub.com')) {
-      throw new Error('Invalid Pornhub URL');
-    }
-
     const video = await pornhub.video(url);
-    console.log(video)
-
-    if (!video || !video.title) {
-      throw new Error('Failed to fetch video info');
-    }
-
     return {
       title: video.title,
+      url: video.url,
       duration: video.duration,
       views: video.views,
-      likes: video.rating,
-      preview: video.preview,
-      thumbnail: video.thumb,
-      video_url: video.url,
-      tags: video.tags,
-      pornstars: video.pornstars,
-      videos: video.media // Contains download URLs (qualities and formats)
+      rating: video.rating,
+      percent: video.percent,
+      tags: video.tags.map(tag => tag.name),
+      thumbnails: video.preview,
+      author: {
+        name: video.author?.name,
+        url: video.author?.url,
+        verified: video.author?.verified,
+      },
+      download: video.downloadUrls || []
     };
-
   } catch (error) {
     throw new Error(error.message);
   }
 };
-
-module.exports = getPornhubVideo;
