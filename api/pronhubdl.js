@@ -1,4 +1,5 @@
-const { PornHub } = require('pornhub.js');
+//const { PornHub } = require('pornhub.js');
+import { PornHub } from 'pornhub.js'
 const pornhub = new PornHub();
 
 module.exports = async (url) => {
