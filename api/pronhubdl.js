@@ -1,16 +1,20 @@
-// pronhubdl.js
-const axios = require('axios');
+import { PornHub } from 'pornhub.js';
+import axios from 'axios';
 
-const getPornhubVideo = async (videoUrl) => {
-  const url = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
+const pornhub = new PornHub();
 
-  const data = {
-    app_id: 'pornhub_downloader',
-    platform: 'Pornhub',
-    url: videoUrl
-  };
+export default async function getPornhubVideo(url) {
+  try {
+    // Step 1: Get metadata using pornhub.js
+    const meta = await pornhub.video(url);
 
-  const headers = {
+    // Step 2: Get download links using xxvid api
+    const response = await axios.post('https://xxx.xxvid.download/xxx-download/video-info-v3', {
+      app_id: 'pornhub_downloader',
+      platform: 'Pornhub',
+      url
+    }, {
+      headers: {
     'Accept': '*/*',
     'Accept-Encoding': 'gzip, deflate, br',
     'Accept-Language': 'en-US,en;q=0.9',
@@ -24,27 +28,49 @@ const getPornhubVideo = async (videoUrl) => {
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'cross-site',
     'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
-  };
-
-  try {
-    const response = await axios.post(url, data, { headers });
-    const resData = response.data;
-
-    if (resData.code === 200 && resData.data) {
-      return {
-        title: resData.data.title,
-        thumbnail: resData.data.img,
-        videos: resData.data.videos.map(video => ({
-          quality: video.quality,
-          url: video.url
-        }))
-      };
-    } else {
-      throw new Error(resData.msg || "Invalid response from downloader");
-    }
-  } catch (err) {
-    throw new Error(err.response?.data?.message || err.message);
   }
-};
+    });
 
-module.exports = getPornhubVideo;
+    const dlData = response.data?.data;
+
+    // Build response
+    return {
+      status: true,
+      title: meta.title,
+      url: meta.url,
+      thumbnail: meta.thumb,
+      preview: meta.preview,
+      duration: meta.durationFormatted,
+      views: meta.views,
+      likes: meta.vote?.up || 0,
+      rating: meta.vote?.rating || 0,
+      uploadDate: meta.uploadDate,
+      stars: meta.pornstars,
+      tags: meta.tags,
+      categories: meta.categories,
+      uploader: {
+        name: meta.provider?.username || "Unknown",
+        profile: `https://www.pornhub.com${meta.provider?.url || ''}`
+      },
+      videos: [
+        ...(dlData?.videos?.map(v => ({
+          type: "mp4",
+          quality: v.quality,
+          url: v.url
+        })) || []),
+        ...(meta.mediaDefinitions?.map(m => ({
+          type: m.format,
+          quality: m.quality || "default",
+          url: m.videoUrl,
+          isDefault: m.defaultQuality
+        })) || [])
+      ]
+    };
+
+  } catch (error) {
+    return {
+      status: false,
+      message: error.message || 'Something went wrong'
+    };
+  }
+}
