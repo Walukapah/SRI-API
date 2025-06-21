@@ -26,6 +26,7 @@
     {
       "src": "/download/pornhubdl",
       "dest": "api/index.js"
+    },
     {
       "src": "/(.*)",
       "dest": "public/$1"
