@@ -1,21 +1,20 @@
-import { PornHub } from 'pornhub.js';
-import axios from 'axios';
+// pronhubdl.js
+const { PornHub } = require('pornhub.js');
+const axios = require('axios');
 
 const pornhub = new PornHub();
 
-export default async function getPornhubVideo(url) {
+const getPornhubVideo = async (url) => {
   try {
-    // Step 1: Get metadata using pornhub.js
     const meta = await pornhub.video(url);
 
-    // Step 2: Get download links using xxvid api
     const response = await axios.post('https://xxx.xxvid.download/xxx-download/video-info-v3', {
       app_id: 'pornhub_downloader',
       platform: 'Pornhub',
       url
     }, {
       headers: {
-    'Accept': '*/*',
+        'Accept': '*/*',
     'Accept-Encoding': 'gzip, deflate, br',
     'Accept-Language': 'en-US,en;q=0.9',
     'Content-Type': 'application/json',
@@ -28,12 +27,11 @@ export default async function getPornhubVideo(url) {
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'cross-site',
     'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
-  }
+      }
     });
 
     const dlData = response.data?.data;
 
-    // Build response
     return {
       status: true,
       title: meta.title,
@@ -73,4 +71,6 @@ export default async function getPornhubVideo(url) {
       message: error.message || 'Something went wrong'
     };
   }
-}
+};
+
+module.exports = getPornhubVideo;
