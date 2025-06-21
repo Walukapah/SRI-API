@@ -1,80 +1,46 @@
 const { PornHub } = require('pornhub.js');
-const axios = require('axios');
-
 const pornhub = new PornHub();
 
-const getPornhubVideo = async (url) => {
+module.exports = async (url) => {
   try {
-    let meta = {};
-    try {
-      meta = await pornhub.video(url);
-    } catch (e) {
-      console.warn("⚠️ Warning: pornhub.js failed to fetch metadata. Using fallback values.");
-    }
+    const video = await pornhub.video(url);
 
-    const response = await axios.post('https://xxx.xxvid.download/xxx-download/video-info-v3', {
-      app_id: 'pornhub_downloader',
-      platform: 'Pornhub',
-      url
-    }, {
-      headers: {
-        'Accept': '*/*',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Content-Type': 'application/json',
-    'Origin': 'https://pornhubdownloader.io',
-    'Referer': 'https://pornhubdownloader.io/',
-    'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132"',
-    'Sec-Ch-Ua-Mobile': '?1',
-    'Sec-Ch-Ua-Platform': '"Android"',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'cross-site',
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
-      }
-    });
-
-    const dlData = response.data?.data;
+    const downloadLinks = (video.mediaDefinitions || [])
+      .filter(def => def.videoUrl)
+      .map(def => ({
+        format: def.format,
+        quality: def.quality || 'unknown',
+        url: def.videoUrl,
+        default: def.defaultQuality || false
+      }));
 
     return {
       status: true,
-      title: meta.title || dlData?.title || 'Pornhub',
-      url: meta.url || url,
-      thumbnail: meta.thumb || dlData?.img || '',
-      preview: meta.preview || '',
-      duration: meta.durationFormatted || '00:00',
-      views: meta.views || 0,
-      likes: meta.vote?.up || 0,
-      rating: meta.vote?.rating || 0,
-      uploadDate: meta.uploadDate || new Date(0).toISOString(),
-      stars: meta.pornstars || [],
-      tags: meta.tags || [],
-      categories: meta.categories || [],
-      uploader: {
-        name: meta.provider?.username || "Unknown",
-        profile: meta.provider?.url ? `https://www.pornhub.com${meta.provider.url}` : 'https://www.pornhub.com'
+      id: video.id,
+      title: video.title,
+      url: video.url,
+      duration: video.durationFormatted,
+      views: video.views,
+      rating: video.vote.rating,
+      likes: video.vote.up,
+      pornstars: video.pornstars,
+      categories: video.categories,
+      tags: video.tags,
+      premium: video.premium,
+      thumbnail: video.thumb,
+      preview: video.preview,
+      uploadDate: video.uploadDate,
+      provider: {
+        name: video.provider?.username || "Unknown",
+        profile: `https://www.pornhub.com${video.provider?.url || ''}`
       },
-      videos: [
-        ...(dlData?.videos?.map(v => ({
-          type: "mp4",
-          quality: `${v.quality} - ${v.quality}`,
-          url: v.url
-        })) || []),
-        ...(meta.mediaDefinitions?.map(m => ({
-          type: m.format,
-          quality: m.quality || "default",
-          url: m.videoUrl,
-          isDefault: m.defaultQuality
-        })) || [])
-      ]
+      downloads: downloadLinks
     };
 
-  } catch (error) {
+  } catch (err) {
     return {
       status: false,
-      message: error.message || 'Something went wrong'
+      message: err.message || "Failed to fetch Pornhub video"
     };
   }
 };
-
-module.exports = getPornhubVideo;
