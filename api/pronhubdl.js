@@ -1,54 +1,37 @@
-//const { PornHub } = require('pornhub.js');
-import { PornHub } from 'pornhub.js'
+// pronhubdl.js
+const { PornHub } = require('pornhub.js');
+
 const pornhub = new PornHub();
 
-module.exports = async (url) => {
+const getPornhubVideo = async (url) => {
   try {
+    if (!url.includes('pornhub.com')) {
+      throw new Error('Invalid Pornhub URL');
+    }
+
     const video = await pornhub.video(url);
+    console.log(video)
 
-    // STEP 1: Print the full raw response for inspection
-    console.log('🔍 Full Pornhub API Response:\n', video);
-
-    // STEP 2: Build clean response from extracted data
-    const downloadLinks = (video.mediaDefinitions || [])
-      .filter(def => def.videoUrl)
-      .map(def => ({
-        format: def.format,
-        quality: def.quality || 'unknown',
-        url: def.videoUrl,
-        default: def.defaultQuality || false
-      }));
+    if (!video || !video.title) {
+      throw new Error('Failed to fetch video info');
+    }
 
     return {
-      status: true,
-      id: video.id,
       title: video.title,
-      url: video.url,
-      duration: video.durationFormatted,
+      duration: video.duration,
       views: video.views,
-      likes: video.vote?.up || 0,
-      rating: video.vote?.rating || 0,
-      premium: video.premium,
-      pornstars: video.pornstars || [],
-      categories: video.categories || [],
-      tags: video.tags || [],
-      thumbnail: video.thumb,
+      likes: video.rating,
       preview: video.preview,
-      uploadDate: video.uploadDate,
-      provider: {
-        name: video.provider?.username || "Unknown",
-        profile: video.provider?.url
-          ? `https://www.pornhub.com${video.provider.url}`
-          : "Unknown"
-      },
-      downloads: downloadLinks
+      thumbnail: video.thumb,
+      video_url: video.url,
+      tags: video.tags,
+      pornstars: video.pornstars,
+      videos: video.media // Contains download URLs (qualities and formats)
     };
 
-  } catch (err) {
-    console.error('❌ Error fetching video:', err.message);
-    return {
-      status: false,
-      message: err.message || "Failed to fetch Pornhub video"
-    };
+  } catch (error) {
+    throw new Error(error.message);
   }
 };
+
+module.exports = getPornhubVideo;
