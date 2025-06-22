@@ -1,8 +1,8 @@
-// pronhubdl.js
 const axios = require('axios');
 
 const getPornhubVideo = async (videoUrl) => {
-  const url = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
+  const xxvidUrl = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
+  const koyebUrl = `https://wild-charmine-walukapahan-4a5319fa.koyeb.app/api/video?url=${encodeURIComponent(videoUrl)}`;
 
   const data = {
     app_id: 'pornhub_downloader',
@@ -27,21 +27,41 @@ const getPornhubVideo = async (videoUrl) => {
   };
 
   try {
-    const response = await axios.post(url, data, { headers });
-    const resData = response.data;
+    // 📥 First API (xxvid)
+    const xxvidRes = await axios.post(xxvidUrl, data, { headers });
+    const xxvidData = xxvidRes.data;
 
-    if (resData.code === 200 && resData.data) {
-      return {
-        title: resData.data.title,
-        thumbnail: resData.data.img,
-        videos: resData.data.videos.map(video => ({
-          quality: video.quality,
-          url: video.url
-        }))
-      };
-    } else {
-      throw new Error(resData.msg || "Invalid response from downloader");
+    if (xxvidData.code !== 200 || !xxvidData.data) {
+      throw new Error(xxvidData.msg || "Invalid response from xxvid API");
     }
+
+    // 📥 Second API (Koyeb)
+    const koyebRes = await axios.get(koyebUrl);
+    const koyebData = koyebRes.data;
+
+    // 🎯 Combine both
+    return {
+      title: koyebData.title || xxvidData.data.title,
+      thumbnail: koyebData.thumb || koyebData.preview || xxvidData.data.img,
+      duration: koyebData.durationFormatted,
+      views: koyebData.views,
+      tags: koyebData.tags,
+      pornstars: koyebData.pornstars,
+      categories: koyebData.categories,
+      videos: [
+        ...xxvidData.data.videos.map(v => ({
+          source: 'xxvid',
+          quality: v.quality,
+          url: v.url
+        })),
+        ...koyebData.mediaDefinitions.map(v => ({
+          source: 'koyeb',
+          quality: v.quality || 'unknown',
+          format: v.format,
+          url: v.videoUrl
+        }))
+      ]
+    };
   } catch (err) {
     throw new Error(err.response?.data?.message || err.message);
   }
