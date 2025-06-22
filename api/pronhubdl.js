@@ -1,10 +1,10 @@
 const axios = require('axios');
 
 const getPornhubVideo = async (videoUrl) => {
-  const xxvidUrl = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
   const koyebUrl = `https://wild-charmine-walukapahan-4a5319fa.koyeb.app/api/video?url=${encodeURIComponent(videoUrl)}`;
+  const xxvidUrl = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
 
-  const data = {
+  const xxvidPayload = {
     app_id: 'pornhub_downloader',
     platform: 'Pornhub',
     url: videoUrl
@@ -27,41 +27,29 @@ const getPornhubVideo = async (videoUrl) => {
   };
 
   try {
-    // 📥 First API (xxvid)
-    const xxvidRes = await axios.post(xxvidUrl, data, { headers });
-    const xxvidData = xxvidRes.data;
-
-    if (xxvidData.code !== 200 || !xxvidData.data) {
-      throw new Error(xxvidData.msg || "Invalid response from xxvid API");
-    }
-
-    // 📥 Second API (Koyeb)
+    // Get data from both APIs
     const koyebRes = await axios.get(koyebUrl);
     const koyebData = koyebRes.data;
 
-    // 🎯 Combine both
+    const xxvidRes = await axios.post(xxvidUrl, xxvidPayload, { headers });
+    const xxvidData = xxvidRes.data;
+
+    if (!koyebData || koyebRes.status !== 200) throw new Error("Koyeb API error");
+    if (xxvidData.code !== 200 || !xxvidData.data) throw new Error("XXVID API error");
+
+    // Combine all into Koyeb structure + add xxvid videos
     return {
-      title: koyebData.title || xxvidData.data.title,
-      thumbnail: koyebData.thumb || koyebData.preview || xxvidData.data.img,
-      duration: koyebData.durationFormatted,
-      views: koyebData.views,
-      tags: koyebData.tags,
-      pornstars: koyebData.pornstars,
-      categories: koyebData.categories,
+      ...koyebData,
       videos: [
+        ...(koyebData.videos || []),
         ...xxvidData.data.videos.map(v => ({
-          source: 'xxvid',
           quality: v.quality,
-          url: v.url
-        })),
-        ...koyebData.mediaDefinitions.map(v => ({
-          source: 'koyeb',
-          quality: v.quality || 'unknown',
-          format: v.format,
-          url: v.videoUrl
+          url: v.url,
+          source: "xxvid"
         }))
       ]
     };
+
   } catch (err) {
     throw new Error(err.response?.data?.message || err.message);
   }
