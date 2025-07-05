@@ -23,10 +23,19 @@ async function getAccountInfo(uid, region) {
 
   const headers = {
     "Accept": "*/*",
-    "Content-Type": "application/json",
-    "Origin": "https://www.hlgamingofficial.com",
-    "Referer": "https://www.hlgamingofficial.com/",
-    "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Content-Type": "application/json",
+        "Origin": "https://www.hlgamingofficial.com",
+        "Referer": "https://www.hlgamingofficial.com/",
+        "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
+        "Sec-Ch-Ua-Mobile": "?1",
+        "Sec-Ch-Ua-Platform": '"Android"',
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "cross-site",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
+        "X-Recaptcha-Token": "03AFcWeA4-ddChgW34z0RAXtlSPw4bqdfzhQaEuAmng-H31POKCFwq6lcRNGDXGTJUoA7V7m1Fasbg1v7h1vUkOW9LXYswwFDgKsMhPAzG_j16WUWoezuVtH5W50_vECuLPm10MPfOzFNW3JSxBl_4HX5kCFQtHsJsRlv_xk9c6lc39Spv-UeFv3UEDdYO_40HgtxrzljWzT1h1YYRMIgj47zo7pkCWNGTfT1caPglBlN8Y4HqZsujNbztOlzOQgmLjw1aTw3v2N2-nh82k_skS5Nu4xEDpnyjkQN4Kw48INeiHVYNx1HXKu72G60JQ7PPID1E8zSWqnUeFm0wdQ8ExFwKqTQ8LV1-P2C95elchVzyLV_8tQT3CoBBh4N1i5fp6nIelU3OZegzD-HXk3TsWqIX7G0SdwsIFLSinobgGJkwE3vje6oWfb9lpatC8FWigwRCMbG7AsGCv-0kn092BgTI2akz3yLTv1lNusZizCi7AQnHCsaZUA9OhfhCcXQpRaprnqkyTttvsvmK2g-YL7VkdRumU_yFnVmAvdANE1De9qvJzcDmBTAghd2tJu2Yof65tyc-Dnon4YA_tIwkgy4VaaY2_p02hmtxhnxNsKOKJaEcc-3FNg1Qkm2BnfGJ0vE4hl3ezJn6E8LzwoJy4Z1oEhq9j2wwECn3ZlXnF-YD1bjK9vjwWWvBKd_AXlsPHyyhxVgmbKmEvlYLDKxPRb0GmYWDy936HVobEhJDpxvBokICliNBo5B6a2PrGZp5jUE3qe5lHr6mgnQhYpoaK6U6RIovhVZr17KmNcSd4tJAX1UtYIJr3kIgrlLt_ndoqyUT3yfDdJGDHnqw2J8nwv_XihK60rtXLrDHKr5QtHynoNoeUweEAIg-dIEtP6Cns3B47cutChPl0cN07OMwiOP_GsxtWgpPlijzWV9L4qct3nSHR46lhiyJn_-WiJPeYNZ5pVlN46HRLeIdGCFysoyCIwPBUwFsSqIU3bKyLPrkuzE6B8HzlBQ618Ft7I17bNNbSYglxfwH5Tq1LrE8LUHQ2HfpUjXjA2-EO5xQsSRWBvv-urgbWsMZ6y_SpxMP_ayBGHn4VLG3h2UdGlOTQY9aQdoPDfC9v0f1QcWENVIofy3SEz2_EdYJxTnYQuua_JNAZDZ-m_K9_Ok6cgrqrupbpeFdz9JCgVbvSIqeLyGImeTGqhzozp8SLbefXWixECpA0GG1hz35tJbbIQmqXDxncXnnwk_6uVh6DXWStLNimd_2yPeP_x3YxkjgC_0J5LE6IygK-kaOWV3OhT7I-pCVvpcHoBDmrHtPQnIxgyv4EXH7eFivA3yc7zg0EK407HC0DKIMRKLUCkCsU4TkAveGIy_i0j-cBHGT8k3VuLF7md6vLaHHEBN1N1VZqpivn3ChpOPN23yqiJyO2_tRDmnVxGHFxIn6zmTOXMbE-UyxCm9MskE7kzwea7AOERPB5Xe4P8wmrA7A1--lXRH82eeBTvUj4LaCC8B1tXh__FHI1_BAl7u--hPrxrrIU6FNsasSOnbhIOUSDc3VMu4Nw3VNZwwJivPA5e2OFKSfFlqCAQjt81eV6Uq2484h01u9PShGRCmggglo1BV4_4OrRwZViPg-LuCEG1Uqu0z9TSGA71oMti9dUCylRlhN0LjhtZXAm6iBijVo7nuVpn3lMvU-bxXZEzKVKG_TetgEibKLHlyq4f1pYvmrP1Su1bQrQtsFcchu_tQFHG9E6w1-IgF4HBDTpTgBZWhCKEevuLyoaxeD_iWv88PxN5bejJ5CQ8zGRbYCjCREgFn-Y7w-_KqYGfOO12fkJBUQAzywn_Oesf8Zc6U27hhNiv1uD19yjMBFLxS1F4ggoH5KEZH-zNieD5ObzGTanwB57oZodUrbUntN6DK9U-4QhkEv3b5gtdB0pYudVmHatwnemTmCPh5G5AdoLYh1Vqoa_ocX4ohRMcuTSQKTifkV-gKZ0tHLFsagKWhB4nj1Q7OdQxT7SoBwrBtMeolb1pmEIYykQTsG1Vp7dC_BDGWo4Vszii-iUfXUhjg1NZVeT2dzd3BREng9MeVF_A4FmAkrvxsLEMnzUGZ2xzmW7dQXCPiMj4aq0vnzq2glPoUD-FUEauuDBthPOq0PPgPwm899KP8Q6592yjiHeY2JQSo"
   };
 
   try {
