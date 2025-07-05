@@ -5,6 +5,7 @@ const youtubedl = require('./youtubedl');
 const tiktokdl = require('./tiktokdl');
 const instagramdl = require('./instagramdl');
 const pornhubdl = require('./pronhubdl');
+const freefireinfo = require('./freefireinfo');
 
 const app = express();
 
@@ -126,6 +127,38 @@ app.get('/download/pornhubdl', async (req, res) => {
     res.status(500).json({ 
       status: false, 
       message: error.message 
+    });
+  }
+});
+
+
+// Add a new endpoint
+app.get('/search/freefire', async (req, res) => {
+  try {
+    const uid = req.query.uid;
+    const region = req.query.region || 'sg';
+    
+    if (!uid) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Please provide a valid UID" 
+      });
+    }
+
+    const ffData = await freefireinfo(uid, region);
+
+    res.json({
+      status: true,
+      creator: "WALUKA🇱🇰",
+      result: ffData
+    });
+
+  } catch (error) {
+    console.error('Free Fire API Error:', error);
+    res.status(500).json({ 
+      status: false, 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
