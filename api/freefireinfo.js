@@ -39,10 +39,10 @@ async function getAccountInfo(uid, region) {
 
   try {
     const accountResponse = await axios.post(accountUrl, accountData, { headers });
-    return { success: true, data: accountResponse.data };
+    return accountResponse.data;
   } catch (err) {
     console.error("Account info error:", err);
-    return { success: false, error: err.message };
+    throw err;
   }
 }
 
@@ -75,120 +75,82 @@ async function getData(uid, region) {
       params: params,
       headers: headers
     });
-    return { success: true, data: dataResponse.data };
+    return dataResponse.data;
   } catch (error) {
     console.error("Data error:", error);
-    return { success: false, error: error.message };
+    throw error;
   }
 }
 
 module.exports = async (uid, region) => {
   try {
-    const [accountResult, dataResult] = await Promise.all([
+    const [accountInfo, data] = await Promise.all([
       getAccountInfo(uid, region),
       getData(uid, region)
     ]);
 
-    // Initialize response structure
+    // Format the response similar to youtubedl.js
     const mainResponse = {
-      status: "partial",
+      status: "success",
       code: 200,
-      message: "Free Fire data retrieved",
+      message: "Free Fire data retrieved successfully",
       data: {
-        account_info: null,
-        guild_info: null,
-        pet_info: null,
-        resources: null
+        account_info: {
+          uid: uid || "12345678",
+          region: region || "sg",
+          name: accountInfo?.AccountInfo?.AccountName || "Unknown",
+          level: accountInfo?.AccountInfo?.AccountLevel || 0,
+          experience: accountInfo?.AccountInfo?.AccountEXP || 0,
+          create_time: accountInfo?.AccountInfo?.AccountCreateTime || "0",
+          create_time_formatted: formatTime(accountInfo?.AccountInfo?.AccountCreateTime || "0"),
+          last_login: accountInfo?.AccountInfo?.AccountLastLogin || "0",
+          last_login_formatted: formatTime(accountInfo?.AccountInfo?.AccountLastLogin || "0"),
+          avatar_id: accountInfo?.AccountInfo?.AccountAvatarId || 0,
+          banner_id: accountInfo?.AccountInfo?.AccountBannerId || 0,
+          title_id: accountInfo?.AccountInfo?.Title || 0,
+          bp_id: accountInfo?.AccountInfo?.AccountBPID || 0,
+          bp_badges: accountInfo?.AccountInfo?.AccountBPBadges || 0,
+          likes: accountInfo?.AccountInfo?.AccountLikes || 0,
+          likes_formatted: formatNumber(accountInfo?.AccountInfo?.AccountLikes || 0),
+          diamond_cost: accountInfo?.AccountInfo?.DiamondCost || 0,
+          release_version: accountInfo?.AccountInfo?.ReleaseVersion || "Unknown",
+          signature: accountInfo?.socialinfo?.AccountSignature || "",
+          br_rank: accountInfo?.AccountInfo?.BrRankPoint || 0,
+          br_max_rank: accountInfo?.AccountInfo?.BrMaxRank || 0,
+          cs_rank: accountInfo?.AccountInfo?.CsRankPoint || 0,
+          cs_max_rank: accountInfo?.AccountInfo?.CsMaxRank || 0,
+          show_br_rank: accountInfo?.AccountInfo?.ShowBrRank || false,
+          show_cs_rank: accountInfo?.AccountInfo?.ShowCsRank || false
+        },
+        guild_info: {
+          id: accountInfo?.GuildInfo?.GuildID || "0",
+          name: accountInfo?.GuildInfo?.GuildName || "No Guild",
+          level: accountInfo?.GuildInfo?.GuildLevel || 0,
+          members: accountInfo?.GuildInfo?.GuildMember || 0,
+          capacity: accountInfo?.GuildInfo?.GuildCapacity || 0,
+          owner: accountInfo?.GuildInfo?.GuildOwner || "0"
+        },
+        pet_info: {
+          id: accountInfo?.petInfo?.id || 0,
+          name: accountInfo?.petInfo?.name || "No Pet",
+          level: accountInfo?.petInfo?.level || 0,
+          exp: accountInfo?.petInfo?.exp || 0,
+          skin_id: accountInfo?.petInfo?.skinId || 0,
+          selected_skill_id: accountInfo?.petInfo?.selectedSkillId || 0,
+          is_selected: accountInfo?.petInfo?.isSelected || false
+        },
+        resources: {
+          outfit: data?.outfit || "",
+          banner: data?.banner || ""
+        }
       },
       meta: {
         timestamp: new Date().toISOString(),
         version: "1.0",
         creator: "WALUKA🇱🇰",
-        service: "HLGamingOfficial",
-        sources: {
-          account_info: accountResult.success,
-          resources: dataResult.success
-        }
+        service: "HLGamingOfficial"
       }
     };
-
-    // Process account info if available
-    if (accountResult.success) {
-      const accountInfo = accountResult.data;
-      mainResponse.data.account_info = {
-        uid: uid || "12345678",
-        region: region || "sg",
-        name: accountInfo?.AccountInfo?.AccountName || "Unknown",
-        level: accountInfo?.AccountInfo?.AccountLevel || 0,
-        experience: accountInfo?.AccountInfo?.AccountEXP || 0,
-        create_time: accountInfo?.AccountInfo?.AccountCreateTime || "0",
-        create_time_formatted: formatTime(accountInfo?.AccountInfo?.AccountCreateTime || "0"),
-        last_login: accountInfo?.AccountInfo?.AccountLastLogin || "0",
-        last_login_formatted: formatTime(accountInfo?.AccountInfo?.AccountLastLogin || "0"),
-        avatar_id: accountInfo?.AccountInfo?.AccountAvatarId || 0,
-        banner_id: accountInfo?.AccountInfo?.AccountBannerId || 0,
-        title_id: accountInfo?.AccountInfo?.Title || 0,
-        bp_id: accountInfo?.AccountInfo?.AccountBPID || 0,
-        bp_badges: accountInfo?.AccountInfo?.AccountBPBadges || 0,
-        likes: accountInfo?.AccountInfo?.AccountLikes || 0,
-        likes_formatted: formatNumber(accountInfo?.AccountInfo?.AccountLikes || 0),
-        diamond_cost: accountInfo?.AccountInfo?.DiamondCost || 0,
-        release_version: accountInfo?.AccountInfo?.ReleaseVersion || "Unknown",
-        signature: accountInfo?.socialinfo?.AccountSignature || "",
-        br_rank: accountInfo?.AccountInfo?.BrRankPoint || 0,
-        br_max_rank: accountInfo?.AccountInfo?.BrMaxRank || 0,
-        cs_rank: accountInfo?.AccountInfo?.CsRankPoint || 0,
-        cs_max_rank: accountInfo?.AccountInfo?.CsMaxRank || 0,
-        show_br_rank: accountInfo?.AccountInfo?.ShowBrRank || false,
-        show_cs_rank: accountInfo?.AccountInfo?.ShowCsRank || false
-      };
-
-      mainResponse.data.guild_info = {
-        id: accountInfo?.GuildInfo?.GuildID || "0",
-        name: accountInfo?.GuildInfo?.GuildName || "No Guild",
-        level: accountInfo?.GuildInfo?.GuildLevel || 0,
-        members: accountInfo?.GuildInfo?.GuildMember || 0,
-        capacity: accountInfo?.GuildInfo?.GuildCapacity || 0,
-        owner: accountInfo?.GuildInfo?.GuildOwner || "0"
-      };
-
-      mainResponse.data.pet_info = {
-        id: accountInfo?.petInfo?.id || 0,
-        name: accountInfo?.petInfo?.name || "No Pet",
-        level: accountInfo?.petInfo?.level || 0,
-        exp: accountInfo?.petInfo?.exp || 0,
-        skin_id: accountInfo?.petInfo?.skinId || 0,
-        selected_skill_id: accountInfo?.petInfo?.selectedSkillId || 0,
-        is_selected: accountInfo?.petInfo?.isSelected || false
-      };
-    }
-
-    // Process resources if available
-    if (dataResult.success) {
-      const data = dataResult.data;
-      mainResponse.data.resources = {
-        outfit: data?.outfit || "",
-        banner: data?.banner || ""
-      };
-    }
-
-    // Update status based on what we got
-    if (accountResult.success && dataResult.success) {
-      mainResponse.status = "success";
-      mainResponse.message = "Free Fire data retrieved successfully";
-    } else if (!accountResult.success && !dataResult.success) {
-      mainResponse.status = "error";
-      mainResponse.code = 500;
-      mainResponse.message = "Failed to retrieve data from both sources";
-    } else {
-      mainResponse.message = "Partial data retrieved (one source failed)";
-      if (!accountResult.success) {
-        mainResponse.message += " - Account info unavailable";
-      }
-      if (!dataResult.success) {
-        mainResponse.message += " - Resources unavailable";
-      }
-    }
 
     return mainResponse;
 
