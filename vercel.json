@@ -28,6 +28,10 @@
       "dest": "api/index.js"
     },
     {
+      "src": "/search/freefire",
+      "dest": "api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
