@@ -135,26 +135,25 @@ app.get('/download/pornhubdl', async (req, res) => {
 // Add a new endpoint
 app.get('/search/freefire', async (req, res) => {
   try {
-    const uid = req.query.uid;
-    const region = req.query.region || 'sg';
+    const { region, uid } = req.query;
     
-    if (!uid) {
+    if (!region || !uid) {
       return res.status(400).json({ 
         status: false, 
-        message: "Please provide a valid UID" 
+        message: "Please provide both region and uid parameters" 
       });
     }
 
-    const ffData = await freefireinfo(uid, region);
+    const playerData = await freefireinfo(region, uid);
 
     res.json({
       status: true,
       creator: "WALUKA🇱🇰",
-      result: ffData
+      result: playerData
     });
 
   } catch (error) {
-    console.error('Free Fire API Error:', error);
+    console.error('API Error:', error);
     res.status(500).json({ 
       status: false, 
       message: error.message,
