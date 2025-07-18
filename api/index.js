@@ -165,6 +165,7 @@ app.get('/search/freefire', async (req, res) => {
 
 
 // Add this new endpoint to your existing index.js
+// Photo Edit Endpoint
 app.get('/ephoto360', async (req, res) => {
   try {
     const { text, type } = req.query;
@@ -173,14 +174,22 @@ app.get('/ephoto360', async (req, res) => {
       return res.status(400).json({ 
         status: false, 
         message: "Both 'text' and 'type' parameters are required",
-        availableTypes: availableTypes // You'll need to import this from photoedit.js or define it here
+        availableTypes: ephoto360.availableTypes // Access availableTypes from photoedit module
       });
     }
 
     const result = await ephoto360(text, type);
 
+    if (result.status === "error") {
+      return res.status(500).json({
+        status: false,
+        message: result.message,
+        availableTypes: result.meta.availableTypes
+      });
+    }
+
     res.json({
-      status: result.status,
+      status: true,
       creator: "WALUKA🇱🇰",
       result: result.data,
       meta: result.meta
@@ -190,7 +199,8 @@ app.get('/ephoto360', async (req, res) => {
     console.error('PhotoEdit Error:', error);
     res.status(500).json({ 
       status: false, 
-      message: error.message
+      message: error.message,
+      availableTypes: ephoto360.availableTypes
     });
   }
 });
