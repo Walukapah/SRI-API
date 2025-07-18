@@ -17,7 +17,7 @@
     "ytdl-core": "^4.11.5",
     "qs": "^6.14.0",
     "pornhub.js": "^1.14.0",
-    "mumaker": "^1.0.5"
+    "mumaker": "^2.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
