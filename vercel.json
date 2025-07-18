@@ -32,6 +32,10 @@
       "dest": "api/index.js"
     },
     {
+      "src": "/ephoto360",
+      "dest": "api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
