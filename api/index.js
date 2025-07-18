@@ -6,6 +6,7 @@ const tiktokdl = require('./tiktokdl');
 const instagramdl = require('./instagramdl');
 const pornhubdl = require('./pronhubdl');
 const freefireinfo = require('./freefireinfo');
+const ephoto360 = require('./ephoto360');
 
 const app = express();
 
@@ -158,6 +159,38 @@ app.get('/search/freefire', async (req, res) => {
       status: false, 
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+
+// Add this new endpoint to your existing index.js
+app.get('/photoedit', async (req, res) => {
+  try {
+    const { text, type } = req.query;
+    
+    if (!text || !type) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Both 'text' and 'type' parameters are required",
+        availableTypes: availableTypes // You'll need to import this from photoedit.js or define it here
+      });
+    }
+
+    const result = await ephoto360(text, type);
+
+    res.json({
+      status: result.status,
+      creator: "WALUKA🇱🇰",
+      result: result.data,
+      meta: result.meta
+    });
+
+  } catch (error) {
+    console.error('PhotoEdit Error:', error);
+    res.status(500).json({ 
+      status: false, 
+      message: error.message
     });
   }
 });
