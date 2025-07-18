@@ -32,7 +32,7 @@
       "dest": "api/index.js"
     },
     {
-      "src": "/ephoto360",
+      "src": "/photo/ephoto360",
       "dest": "api/index.js"
     },
     {
