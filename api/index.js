@@ -165,7 +165,7 @@ app.get('/search/freefire', async (req, res) => {
 
 
 // Add this new endpoint to your existing index.js
-app.get('/photoedit', async (req, res) => {
+app.get('/ephoto360', async (req, res) => {
   try {
     const { text, type } = req.query;
     
