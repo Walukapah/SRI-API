@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const getPornhubVideo = async (videoUrl) => {
-  const koyebUrl = `https://wild-charmine-walukapahan-4a5319fa.koyeb.app/api/video?url=${encodeURIComponent(videoUrl)}`;
+  const koyebUrl = `https://sri-api.koyeb.app/api/video?url=${encodeURIComponent(videoUrl)}`;
   const xxvidUrl = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
 
   const xxvidPayload = {
