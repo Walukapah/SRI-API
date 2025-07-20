@@ -6,9 +6,7 @@ const tiktokdl = require('./tiktokdl');
 const instagramdl = require('./instagramdl');
 const pornhubdl = require('./pronhubdl');
 const freefireinfo = require('./freefireinfo');
-const ephoto360 = require('./ephoto360');
-
-const app = express();
+const textphoto = require('./textphoto');
 
 // Middleware
 app.use(cors());
@@ -166,23 +164,34 @@ app.get('/search/freefire', async (req, res) => {
 
 // Add this new endpoint to your existing index.js
 // Photo Edit Endpoint
-app.get('/photo/ephoto360', async (req, res) => {
+// Text Photo Generation Endpoint
+app.get('/download/textphoto', async (req, res) => {
   try {
-    const { text, type } = req.query;
+    const { url, ...textParams } = req.query;
     
-    if (!text || !type) {
+    if (!url) {
       return res.status(400).json({ 
         status: false, 
-        message: "Please provide both 'text' and 'type' parameters",
-        availableTypes: Object.keys(effectTypes) 
+        message: "URL parameter is required" 
       });
     }
 
-    const result = await ephoto360(text, type);
-
-    if (result.status === "error") {
-      return res.status(500).json(result);
+    // Extract all text parameters (text, text2, text3, etc.)
+    const texts = [];
+    for (const key in textParams) {
+      if (key.startsWith('text')) {
+        texts.push(textParams[key]);
+      }
     }
+
+    if (texts.length === 0) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "At least one text parameter is required" 
+      });
+    }
+
+    const result = await textphoto(url, texts);
 
     res.json({
       status: true,
@@ -191,10 +200,11 @@ app.get('/photo/ephoto360', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('Text Photo API Error:', error);
     res.status(500).json({ 
       status: false, 
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
