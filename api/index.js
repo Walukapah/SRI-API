@@ -8,6 +8,8 @@ const pornhubdl = require('./pronhubdl');
 const freefireinfo = require('./freefireinfo');
 const textphoto = require('./textphoto');
 
+const app = express();
+
 // Middleware
 app.use(cors());
 app.set('trust proxy', 1);
