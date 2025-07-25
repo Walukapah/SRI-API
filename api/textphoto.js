@@ -3,9 +3,21 @@ const cheerio = require('cheerio');
 const FormData = require('form-data');
 
 const generateTextPhoto = async (url, texts) => {
-  // Fixed URL validation - was rejecting valid URLs due to incorrect logic
-  if (!/https?:\/\/(ephoto360|photooxy|textpro)\.(com|me)/i.test(url)) {
-    throw new Error('Invalid URL - Only TextPro, ePhoto360, and PhotoOxy URLs are supported');
+  // Comprehensive URL validation pattern
+  const urlPattern = new RegExp(
+    '^(https?:\\/\\/)?' + // protocol
+    '((([a-z\\d]([a-z\\d-]*[a-z\\d])?)\\.)+[a-z]{2,}|' + // domain name
+    'localhost|' + // localhost
+    '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|' + // IP address
+    '\\[?[a-f\\d:]+\\]?)' + // IPv6
+    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+    '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+    '(\\#[-a-z\\d_]*)?$', 'i'
+  );
+
+  // Additional check for specific allowed domains
+  if (!urlPattern.test(url) || !/https?:\/\/(ephoto360|photooxy|textpro)\.(com|me)/i.test(url)) {
+    throw new Error('Invalid URL - Only valid TextPro, ePhoto360, and PhotoOxy URLs are supported');
   }
 
   try {
