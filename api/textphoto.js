@@ -3,44 +3,57 @@ const cheerio = require('cheerio');
 const FormData = require('form-data');
 
 const generateTextPhoto = async (url, texts) => {
-  // Comprehensive URL validation pattern
-  const urlPattern = new RegExp(
-    '^(https?:\\/\\/)?' + // protocol
-    '((([a-z\\d]([a-z\\d-]*[a-z\\d])?)\\.)+[a-z]{2,}|' + // domain name
-    'localhost|' + // localhost
-    '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|' + // IP address
-    '\\[?[a-f\\d:]+\\]?)' + // IPv6
-    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-    '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-    '(\\#[-a-z\\d_]*)?$', 'i'
-  );
-
-  // Additional check for specific allowed domains
-  if (!urlPattern.test(url) || !/https?:\/\/(ephoto360|photooxy|textpro)\.(com|me)/i.test(url)) {
-    throw new Error('Invalid URL - Only valid TextPro, ePhoto360, and PhotoOxy URLs are supported');
-  }
-
+  // URL validation with clear error messages
   try {
+    // First validate it's a proper URL
+    const parsedUrl = new URL(url);
+    
+    // Allowed domains configuration
+    const allowedDomains = [
+      { name: "ePhoto360", regex: /(^|\.)ephoto360\.(com|me)(\.|$)/i },
+      { name: "PhotoOxy", regex: /(^|\.)photooxy\.(com|me)(\.|$)/i },
+      { name: "TextPro", regex: /(^|\.)textpro\.(com|me)(\.|$)/i }
+    ];
+
+    // Check if domain is allowed
+    const domainMatch = allowedDomains.find(d => d.regex.test(parsedUrl.hostname));
+    if (!domainMatch) {
+      const allowedList = allowedDomains.map(d => `- ${d.name} (${d.regex.toString()})`).join('\n');
+      throw new Error(
+        `Invalid URL - Only these services are supported:\n${allowedList}\n\n` +
+        `You provided: ${parsedUrl.hostname}`
+      );
+    }
+
     // Initial request to get form data
     const initialResponse = await axios.get(url, {
       headers: {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Origin": new URL(url).origin,
+        "Origin": parsedUrl.origin,
         "Referer": url,
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
-      }
+      },
+      timeout: 10000 // 10 seconds timeout
     });
 
     const $ = cheerio.load(initialResponse.data);
 
-    // Extract required form fields - some ePhoto360 pages use different selectors
-    const server = $('#build_server').val() || $('input[name="build_server"]').val();
-    const serverId = $('#build_server_id').val() || $('input[name="build_server_id"]').val();
-    const token = $('#token').val() || $('input[name="token"]').val();
-    const submit = $('#submit').val() || $('button[name="submit"]').val();
+    // Extract required form fields with better error handling
+    const getFieldValue = (selectors) => {
+      for (const selector of selectors) {
+        const val = $(selector).val();
+        if (val) return val;
+      }
+      return null;
+    };
+
+    const server = getFieldValue(['#build_server', 'input[name="build_server"]']);
+    const serverId = getFieldValue(['#build_server_id', 'input[name="build_server_id"]']);
+    const token = getFieldValue(['#token', 'input[name="token"]']);
+    const submit = getFieldValue(['#submit', 'button[name="submit"]']);
 
     if (!server || !serverId || !token || !submit) {
-      throw new Error('Failed to extract required form data from the page');
+      throw new Error('Failed to extract required form data from the page. The website structure may have changed.');
     }
 
     const formData = new FormData();
@@ -49,107 +62,111 @@ const generateTextPhoto = async (url, texts) => {
     formData.append('build_server', server);
     formData.append('build_server_id', Number(serverId));
 
-    // Add radio button selection if present (common in ePhoto360)
-    const radioOptions = [];
-    $('input[name^="radio"]').each((i, elem) => {
-      if ($(elem).attr('name').match(/radio\d+\[radio\]/)) {
-        radioOptions.push($(elem).attr('value'));
+    // Handle radio buttons if present
+    $('input[type="radio"][name^="radio"]').each((i, elem) => {
+      const name = $(elem).attr('name');
+      if (name && name.includes('[radio]')) {
+        formData.append(name, $(elem).attr('value'));
       }
     });
-
-    if (radioOptions.length > 0) {
-      formData.append(radioOptions[0].match(/radio\d+/)[0] + '[radio]', 
-                     radioOptions[Math.floor(Math.random() * radioOptions.length)]);
-    }
 
     // Add all text inputs
     texts.forEach((text, index) => {
-      formData.append(`text[${index}]`, text); // ePhoto360 uses text[0], text[1] format
+      formData.append(`text[${index}]`, text);
     });
 
-    // Submit the form
+    // Submit the form with timeout
     const formSubmitResponse = await axios.post(url, formData, {
       headers: {
         ...formData.getHeaders(),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Origin": new URL(url).origin,
+        "Accept": "text/html",
+        "Origin": parsedUrl.origin,
         "Referer": url,
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188",
         "Cookie": initialResponse.headers['set-cookie']?.join('; ') || ""
-      }
-    });
-
-    // Extract the form value - ePhoto360 sometimes uses different selectors
-    const $formResponse = cheerio.load(formSubmitResponse.data);
-    let formValue = $formResponse('#form_value').val() || 
-                   $formResponse('#form_value_input').val() ||
-                   $formResponse('input[name="form_value"]').val();
-
-    if (!formValue) {
-      // Try to find a script tag containing the form value
-      const scripts = $formResponse('script').toString();
-      const formValueMatch = scripts.match(/form_value[^}]*}/);
-      if (formValueMatch) {
-        formValue = formValueMatch[0].replace(/form_value\s*:\s*/, '');
-      }
-    }
-
-    if (!formValue) {
-      throw new Error('Failed to extract form value for image generation');
-    }
-
-    // Clean the form value if needed
-    if (formValue.startsWith('{') && formValue.endsWith('}')) {
-      formValue = formValue.replace(/\\'/g, "'");
-    } else {
-      formValue = formValue.replace(/'/g, '"').replace(/(\w+):/g, '"$1":');
-    }
-
-    // Generate the final image
-    const imageUrl = new URL(url).origin + '/effect/create-image';
-    const imageGenerationResponse = await axios.post(imageUrl, JSON.parse(formValue), {
-      headers: {
-        "Accept": "*/*",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "Origin": new URL(url).origin,
-        "Referer": url,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188",
-        "Cookie": initialResponse.headers['set-cookie']?.join('; ') || ""
-      }
-    });
-
-    // Construct the response
-    const response = {
-      status: "success",
-      code: 200,
-      message: "Text photo generated successfully",
-      data: {
-        image_url: imageGenerationResponse.data?.image ? 
-                 (server + imageGenerationResponse.data.image) : 
-                 (imageGenerationResponse.data?.fullsize_image || ""),
-        session_id: imageGenerationResponse.data?.session_id,
-        service: new URL(url).hostname,
-        texts_used: texts
       },
-      meta: {
-        timestamp: new Date().toISOString(),
-        version: "1.0",
-        creator: "WALUKA🇱🇰"
-      }
-    };
+      timeout: 15000 // 15 seconds timeout
+    });
 
-    return response;
+    // Extract form value with multiple fallback methods
+    const $formResponse = cheerio.load(formSubmitResponse.data);
+    let formValue = getFieldValue(['#form_value', '#form_value_input', 'input[name="form_value"]']);
+
+    if (!formValue) {
+      const scriptContent = $formResponse('script').toString();
+      const formValueMatch = scriptContent.match(/form_value\s*:\s*({[^}]+})/);
+      if (formValueMatch) formValue = formValueMatch[1];
+    }
+
+    if (!formValue) {
+      throw new Error('Failed to extract image generation parameters. The website may have updated its structure.');
+    }
+
+    // Clean and parse the form value
+    try {
+      const cleanedValue = formValue
+        .replace(/'/g, '"')
+        .replace(/(\w+)\s*:/g, '"$1":')
+        .replace(/,\s*}/g, '}');
+      
+      const formJson = JSON.parse(cleanedValue);
+
+      // Generate the final image with timeout
+      const imageUrl = `${parsedUrl.origin}/effect/create-image`;
+      const imageResponse = await axios.post(imageUrl, formJson, {
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Origin": parsedUrl.origin,
+          "Referer": url,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188",
+          "Cookie": initialResponse.headers['set-cookie']?.join('; ') || ""
+        },
+        timeout: 20000 // 20 seconds timeout
+      });
+
+      // Validate and format response
+      if (!imageResponse.data || (!imageResponse.data.image && !imageResponse.data.fullsize_image)) {
+        throw new Error('The service did not return a valid image URL');
+      }
+
+      return {
+        status: "success",
+        code: 200,
+        message: "Text photo generated successfully",
+        data: {
+          image_url: imageResponse.data.image 
+            ? `${server}${imageResponse.data.image}`
+            : imageResponse.data.fullsize_image,
+          session_id: imageResponse.data.session_id,
+          service: domainMatch.name,
+          texts_used: texts
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          version: "2.1",
+          creator: "WALUKA🇱🇰"
+        }
+      };
+
+    } catch (parseError) {
+      throw new Error(`Failed to process image generation: ${parseError.message}`);
+    }
 
   } catch (error) {
     console.error('Text Photo Generation Error:', error);
+    
     return {
       status: "error",
-      code: 500,
-      message: error.message,
+      code: error.response?.status || 500,
+      message: error.message.includes('Invalid URL') 
+        ? error.message 
+        : `Failed to generate image: ${error.message}`,
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0"
+        version: "2.1",
+        attempted_url: url
       }
     };
   }
