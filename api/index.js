@@ -167,46 +167,23 @@ app.get('/search/freefire', async (req, res) => {
 // Add this new endpoint to your existing index.js
 // Photo Edit Endpoint
 // Text Photo Generation Endpoint
+// Add this endpoint to your existing index.js
 app.get('/download/textphoto', async (req, res) => {
   try {
-    const { url, ...textParams } = req.query;
+    const { url, ...queryParams } = req.query;
     
-    if (!url) {
-      return res.status(400).json({ 
-        status: false, 
-        message: "URL parameter is required" 
-      });
-    }
-
-    // Extract all text parameters (text, text2, text3, etc.)
-    const texts = [];
-    for (const key in textParams) {
-      if (key.startsWith('text')) {
-        texts.push(textParams[key]);
-      }
-    }
-
-    if (texts.length === 0) {
-      return res.status(400).json({ 
-        status: false, 
-        message: "At least one text parameter is required" 
-      });
-    }
-
-    const result = await textphoto(url, texts);
-
+    const result = await phototext(url, queryParams);
+    
     res.json({
-      status: true,
+      status: result.status === "success",
       creator: "WALUKA🇱🇰",
       result: result
     });
-
+    
   } catch (error) {
-    console.error('Text Photo API Error:', error);
-    res.status(500).json({ 
-      status: false, 
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });
