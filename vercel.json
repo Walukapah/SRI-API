@@ -36,6 +36,10 @@
       "dest": "api/index.js"
     },
     {
+      "src": "/download/youtubedl2",
+      "dest": "api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
