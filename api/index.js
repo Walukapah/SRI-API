@@ -7,6 +7,7 @@ const instagramdl = require('./instagramdl');
 const pornhubdl = require('./pronhubdl');
 const freefireinfo = require('./freefireinfo');
 const textphoto = require('./textphoto');
+const youtubedl2 = require('./youtubedl2');
 
 const app = express();
 
@@ -183,6 +184,36 @@ app.get('/download/textphoto', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
+      message: error.message
+    });
+  }
+});
+
+
+// Add to your index.js
+app.get('/download/youtubedl2', async (req, res) => {
+  try {
+    const url = req.query.url;
+    
+    if (!url || !url.includes('youtu')) {
+      return res.status(400).json({ 
+        status: false, 
+        message: "Please provide a valid YouTube URL" 
+      });
+    }
+
+    const youtubeData = await youtubedl2(url);
+
+    res.json({
+      status: true,
+      creator: "YourName",
+      result: youtubeData
+    });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ 
+      status: false, 
       message: error.message
     });
   }
