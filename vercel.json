@@ -10,6 +10,9 @@
       "use": "@vercel/static"
     }
   ],
+  "env": {
+    "NODE_VERSION": "18"
+  },
   "routes": [
     {
       "src": "/download/tiktokdl",
