@@ -22,8 +22,8 @@ const getVideoData = async (videoUrl) => {
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
     "Content-Type": "application/x-www-form-urlencoded",
-    "Origin": "https://iloveyt.net",
-    "Referer": "https://iloveyt.net/en2",
+    "Origin": "https://ytsave.to",
+    "Referer": "https://ytsave.to/en2",
     "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
     "Sec-Ch-Ua-Mobile": "?1",
     "Sec-Ch-Ua-Platform": '"Android"',
@@ -36,7 +36,7 @@ const getVideoData = async (videoUrl) => {
 
   try {
     const response = await axios.post(
-      "https://iloveyt.net/proxy.php",
+      "https://ytsave.to/proxy.php",
       qs.stringify(data),
       { headers }
     );
