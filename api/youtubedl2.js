@@ -1,163 +1,159 @@
 const axios = require('axios');
 const qs = require('qs');
 
-// Helper functions
-const formatDuration = (seconds) => {
+/* ------------------ Helpers ------------------ */
+const formatDuration = (seconds = 0) => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-const formatCount = (num) => {
-  if (num >= 1000000) return (num/1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num/1000).toFixed(1) + 'K';
+const formatCount = (num = 0) => {
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+  if (num >= 1_000) return (num / 1_000).toFixed(1) + 'K';
   return num.toString();
 };
 
 const getQualityLabel = (quality) => {
-  const qualityMap = {
+  const map = {
     '18': '360p',
-    '136': '720p',
+    '22': '720p',
     '137': '1080p',
     '140': '128kbps',
     'mp3128': '128kbps',
     'auto': 'auto'
   };
-  return qualityMap[quality] || quality;
+  return map[quality] || quality;
 };
 
-// API request headers
+/* ------------------ Headers ------------------ */
 const headers = {
-  "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-  "Origin": "https://ssvid.net",
-  "Referer": "https://ssvid.net/en82",
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-  "X-Requested-With": "XMLHttpRequest",
   "Accept": "*/*",
+  "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+  "X-Requested-With": "XMLHttpRequest",
+  "Origin": "https://ssvid.app",
+  "Referer": "https://ssvid.app/en82",
+  "User-Agent":
+    "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
 };
 
-// Search for video
+/* ------------------ API Calls ------------------ */
 async function searchVideo(youtubeUrl) {
-  const url = "https://ssvid.net/api/ajax/search?hl=en";
-  const data = {
+  const url = "https://ssvid.app/api/ajax/search?hl=en";
+
+  const data = qs.stringify({
     hl: "en",
     query: youtubeUrl,
     cf_token: "",
-    vt: "home",
-  };
-  const response = await axios.post(url, qs.stringify(data), { headers, timeout: 10000 });
-  return response.data;
+    vt: "home"
+  });
+
+  const res = await axios.post(url, data, { headers, timeout: 15000 });
+  return res.data;
 }
 
-// Convert video
 async function convertVideo(vid, k) {
-  const url = "https://ssvid.net/api/ajax/convert?hl=en";
-  const data = { hl: "en", vid, k };
-  const response = await axios.post(url, qs.stringify(data), { headers, timeout: 10000 });
-  return response.data;
+  const url = "https://ssvid.app/api/ajax/convert?hl=en";
+
+  const data = qs.stringify({
+    hl: "en",
+    vid,
+    k
+  });
+
+  const res = await axios.post(url, data, { headers, timeout: 15000 });
+  return res.data;
 }
 
-// Main function
-module.exports = async (url) => {
+/* ------------------ Main Export ------------------ */
+module.exports = async (youtubeUrl) => {
   try {
-    if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
-      throw new Error('Please provide a valid YouTube URL');
+    if (!youtubeUrl || (!youtubeUrl.includes("youtube.com") && !youtubeUrl.includes("youtu.be"))) {
+      throw new Error("Invalid YouTube URL");
     }
 
-    // Extract video ID
-    let videoId = '';
-    if (url.includes('youtube.com')) {
-      const match = url.match(/[?&]v=([^&]+)/);
-      videoId = match ? match[1] : '';
-    } else if (url.includes('youtu.be')) {
-      videoId = url.split('/').pop().split('?')[0];
+    /* Extract video ID */
+    let videoId = "";
+    if (youtubeUrl.includes("youtube.com")) {
+      const m = youtubeUrl.match(/[?&]v=([^&]+)/);
+      videoId = m ? m[1] : "";
+    } else {
+      videoId = youtubeUrl.split("/").pop().split("?")[0];
     }
+    if (!videoId) throw new Error("Failed to extract video ID");
 
-    if (!videoId) throw new Error('Could not extract video ID from URL');
-
-    console.log('🔍 Searching for video:', url);
-    const searchRes = await searchVideo(url);
+    /* Search */
+    console.log("🔍 Searching:", youtubeUrl);
+    const searchRes = await searchVideo(youtubeUrl);
 
     if (!searchRes || !searchRes.vid) {
-      throw new Error('Video not found or search failed');
+      throw new Error("Search failed or video not found");
     }
 
-    // Get video metadata from search response
-    const videoData = searchRes;
-    const vid = videoData.vid || videoId;
+    const vid = searchRes.vid;
+    const links = searchRes.links || {};
 
-    // Get all available formats
+    /* Convert all formats */
     const downloadLinks = {};
-    const links = videoData.links || {};
 
-    for (const formatType of Object.keys(links)) {
-      downloadLinks[formatType] = {};
-      
-      for (const qualityKey of Object.keys(links[formatType])) {
-        const item = links[formatType][qualityKey];
-        const k = item.k;
+    for (const type of Object.keys(links)) {
+      downloadLinks[type] = {};
 
-        console.log(`➡️ Converting ${formatType} ${qualityKey}...`);
+      for (const q of Object.keys(links[type])) {
+        const item = links[type][q];
         try {
-          const convertRes = await convertVideo(vid, k);
-          
-          if (convertRes.status === 'ok' && convertRes.dlink) {
-            downloadLinks[formatType][qualityKey] = {
-              info: item,
-              convertResponse: convertRes
+          console.log(`⚙️ Converting ${type} ${q}`);
+          const conv = await convertVideo(vid, item.k);
+
+          if (conv.status === "ok") {
+            downloadLinks[type][getQualityLabel(q)] = {
+              size: item.size || null,
+              download_url: conv.dlink
             };
           } else {
-            downloadLinks[formatType][qualityKey] = {
-              info: item,
-              error: convertRes.mess || 'Conversion failed'
+            downloadLinks[type][getQualityLabel(q)] = {
+              error: conv.mess || "Convert failed"
             };
           }
-        } catch (error) {
-          downloadLinks[formatType][qualityKey] = {
-            info: item,
-            error: error.message
-          };
+        } catch (e) {
+          downloadLinks[type][getQualityLabel(q)] = { error: e.message };
         }
       }
     }
 
-    // Format response similar to TikTok example
-    const response = {
+    /* Final response */
+    return {
       status: "success",
       code: 200,
-      message: "YouTube video data retrieved successfully",
+      message: "YouTube data fetched successfully",
       data: {
         video_info: {
           id: vid,
-          title: videoData.title || "No title",
-          original_url: url,
-          duration: videoData.duration || 0,
-          duration_formatted: formatDuration(videoData.duration || 0),
-          thumbnail: videoData.image || "",
-          views: videoData.views || 0,
-          views_formatted: formatCount(videoData.views || 0)
+          title: searchRes.title || "Unknown",
+          url: youtubeUrl,
+          duration: searchRes.duration || 0,
+          duration_formatted: formatDuration(searchRes.duration),
+          thumbnail: searchRes.image,
+          views: searchRes.views || 0,
+          views_formatted: formatCount(searchRes.views)
         },
         download_links: downloadLinks
       },
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0",
-        creator: "YourName"
+        source: "ssvid.app",
+        version: "1.0"
       }
     };
 
-    return response;
-
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (err) {
     return {
       status: "error",
       code: 500,
-      message: error.message,
+      message: err.message,
       data: null,
       meta: {
-        timestamp: new Date().toISOString(),
-        version: "1.0"
+        timestamp: new Date().toISOString()
       }
     };
   }
