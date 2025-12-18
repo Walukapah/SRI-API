@@ -30,7 +30,7 @@ const getQualityLabel = (quality) => {
 const headers = {
   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
   "Origin": "https://ssvid.net",
-  "Referer": "https://ssvid.net/en32",
+  "Referer": "https://ssvid.net/en82",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
   "X-Requested-With": "XMLHttpRequest",
   "Accept": "*/*",
