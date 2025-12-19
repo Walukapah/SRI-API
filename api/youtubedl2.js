@@ -27,12 +27,17 @@ const formatSize = (size) => {
 
 // Headers configuration
 const headers = {
-  "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-  "Accept": "*/*",
-  "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-  "X-Requested-With": "XMLHttpRequest",
-  "Origin": "https://ssvid.app",
-  "Referer": "https://ssvid.app/en82",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Accept": "*/*",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": "https://ssvid.app",
+    "Referer": "https://ssvid.app/en82",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin"
 };
 
 // Search function
