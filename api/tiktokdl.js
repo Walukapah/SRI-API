@@ -23,6 +23,87 @@ const formatCount = (num) => {
   return num.toString();
 };
 
+// Extract video ID from various TikTok URL formats
+const extractVideoId = (url) => {
+  // Pattern 1: Standard URL https://www.tiktok.com/@username/video/1234567890
+  let match = url.match(/video\/(\d+)/);
+  if (match) return match[1];
+
+  // Pattern 2: Direct video ID in path /v/1234567890 or /1234567890.html
+  match = url.match(/[\/v\/](\d{15,})/);
+  if (match) return match[1];
+
+  // Pattern 3: item_id parameter
+  match = url.match(/[?&]item_id=(\d+)/);
+  if (match) return match[1];
+
+  // Pattern 4: shareId parameter
+  match = url.match(/[?&]shareId=(\d+)/);
+  if (match) return match[1];
+
+  return null;
+};
+
+// Resolve short URL to full URL
+const resolveShortUrl = async (shortUrl) => {
+  try {
+    const response = await axios.get(shortUrl, {
+      maxRedirects: 5,
+      validateStatus: () => true,
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    });
+
+    // Check if we got redirected
+    if (response.request?.res?.responseUrl) {
+      return response.request.res.responseUrl;
+    }
+
+    // Check Location header
+    if (response.headers?.location) {
+      return response.headers.location;
+    }
+
+    // Try to extract from HTML if it's a meta refresh or JavaScript redirect
+    if (response.data && typeof response.data === 'string') {
+      const $ = cheerio.load(response.data);
+
+      // Check meta refresh
+      const metaRefresh = $('meta[http-equiv="refresh"]').attr('content');
+      if (metaRefresh) {
+        const urlMatch = metaRefresh.match(/URL=(.+)/i);
+        if (urlMatch) return urlMatch[1].trim();
+      }
+
+      // Check canonical link
+      const canonical = $('link[rel="canonical"]').attr('href');
+      if (canonical && canonical.includes('tiktok.com')) {
+        return canonical;
+      }
+
+      // Check for data in script tags
+      const scripts = $('script').map((i, el) => $(el).html()).get();
+      for (const script of scripts) {
+        if (script && script.includes('video')) {
+          const idMatch = script.match(/video\/(\d+)/);
+          if (idMatch) {
+            return `https://www.tiktok.com/@user/video/${idMatch[1]}`;
+          }
+        }
+      }
+    }
+
+    return shortUrl;
+  } catch (error) {
+    console.log('URL resolution error:', error.message);
+    return shortUrl;
+  }
+};
+
 // Get video without watermark using multiple APIs
 const getNoWatermarkUrl = async (videoUrl) => {
   // Method 1: Using tikwm.com API (Most reliable)
@@ -91,35 +172,6 @@ const getNoWatermarkUrl = async (videoUrl) => {
     console.log('ssstik method failed:', error.message);
   }
 
-  // Method 3: Using ttdownloader.io
-  try {
-    const ttdownResponse = await axios.post('https://ttdownloader.io/api/ajaxSearch',
-      new URLSearchParams({ q: videoUrl, lang: 'en' }),
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Referer': 'https://ttdownloader.io/'
-        },
-        timeout: 15000
-      }
-    );
-
-    if (ttdownResponse.data?.data) {
-      const $ = cheerio.load(ttdownResponse.data.data);
-      const noWatermarkLink = $('a[title="Without watermark"]').attr('href');
-      if (noWatermarkLink) {
-        return {
-          url: noWatermarkLink,
-          quality: 'HD',
-          method: 'ttdownloader'
-        };
-      }
-    }
-  } catch (error) {
-    console.log('ttdownloader method failed:', error.message);
-  }
-
   return null;
 };
 
@@ -131,84 +183,161 @@ module.exports = async (url) => {
       throw new Error('Invalid URL provided');
     }
 
-    // Handle short URLs
+    console.log('Original URL:', url);
+
+    // Check if it's a short URL and resolve it
     let finalUrl = url;
-    if (url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com') || url.includes('t.tiktok.com')) {
-      try {
-        const response = await axios.head(url, {
-          maxRedirects: 5,
-          validateStatus: null,
-          timeout: 5000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-        if (response.headers.location) {
-          finalUrl = response.headers.location;
-        }
-      } catch (redirectError) {
-        console.log('Redirect handling error:', redirectError.message);
-      }
+    const isShortUrl = url.includes('vm.tiktok.com') || 
+                       url.includes('vt.tiktok.com') || 
+                       url.includes('t.tiktok.com') ||
+                       url.includes('m.tiktok.com');
+
+    if (isShortUrl) {
+      console.log('Detected short URL, resolving...');
+      finalUrl = await resolveShortUrl(url);
+      console.log('Resolved URL:', finalUrl);
     }
 
     // Extract video ID
-    const videoIdMatch = finalUrl.match(/video\/(\d+)/) || 
-                        finalUrl.match(/\/(\d{15,})/) ||
-                        finalUrl.match(/v\/(\d+)/);
+    let videoId = extractVideoId(finalUrl);
 
-    if (!videoIdMatch) {
-      throw new Error('Invalid TikTok URL format');
-    }
+    // If still no video ID, try to fetch the page and extract from HTML
+    if (!videoId) {
+      console.log('No video ID found in URL, fetching page content...');
+      try {
+        const { data: html } = await axios.get(finalUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          },
+          timeout: 10000
+        });
 
-    const videoId = videoIdMatch[1];
+        // Try multiple patterns in the HTML
+        const patterns = [
+          /video\/(\d{15,})/,
+          /"id":"(\d{15,})"/,
+          /itemId":"(\d{15,})"/,
+          /videoId":"(\d{15,})"/,
+          /\/video\/(\d+)/
+        ];
 
-    // Get metadata from TikTok page
-    const tiktokPageUrl = finalUrl.includes('tiktok.com') ? finalUrl : `https://www.tiktok.com/@user/video/${videoId}`;
-
-    const { data: html } = await axios.get(tiktokPageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.tiktok.com/',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Upgrade-Insecure-Requests': '1'
-      },
-      timeout: 10000
-    });
-
-    // Parse metadata
-    const $ = cheerio.load(html);
-    const script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__').html() || 
-                   $('#SIGI_STATE').html() ||
-                   $('script:contains("itemInfo")').first().html();
-
-    if (!script) {
-      throw new Error('Could not extract video metadata from TikTok page');
-    }
-
-    let videoData;
-    try {
-      const jsonData = JSON.parse(script);
-      videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct || 
-                  jsonData.__DEFAULT_SCOPE__?.webapp?.videoDetail?.itemInfo?.itemStruct ||
-                  jsonData.ItemModule?.[videoId];
-    } catch (e) {
-      // Try to extract from embedded JSON
-      const match = script.match(/itemInfo\s*:\s*({[^}]+})/);
-      if (match) {
-        videoData = JSON.parse(match[1]);
+        for (const pattern of patterns) {
+          const match = html.match(pattern);
+          if (match) {
+            videoId = match[1];
+            console.log('Found video ID from HTML:', videoId);
+            break;
+          }
+        }
+      } catch (e) {
+        console.log('Failed to fetch page for ID extraction:', e.message);
       }
     }
 
-    if (!videoData) {
-      throw new Error('Video data extraction failed');
+    if (!videoId) {
+      return {
+        status: "error",
+        code: 400,
+        message: "Could not extract video ID from URL",
+        debug_info: {
+          original_url: url,
+          resolved_url: finalUrl,
+          tip: "Please use a full TikTok URL like https://www.tiktok.com/@username/video/1234567890"
+        },
+        data: null,
+        meta: {
+          timestamp: new Date().toISOString(),
+          version: "2.1",
+          creator: "WALUKA🇱🇰"
+        }
+      };
     }
 
-    // Get no watermark URL
-    const noWatermarkData = await getNoWatermarkUrl(finalUrl);
+    console.log('Extracted Video ID:', videoId);
+
+    // Construct a proper TikTok URL for metadata extraction
+    const tiktokPageUrl = finalUrl.includes('tiktok.com') && finalUrl.includes('/video/') 
+      ? finalUrl 
+      : `https://www.tiktok.com/@user/video/${videoId}`;
+
+    // Get metadata from TikTok page
+    let videoData = null;
+    try {
+      const { data: html } = await axios.get(tiktokPageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': 'https://www.tiktok.com/',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        timeout: 10000
+      });
+
+      // Parse metadata
+      const $ = cheerio.load(html);
+      const script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__').html() || 
+                     $('#SIGI_STATE').html() ||
+                     $('script:contains("itemInfo")').first().html() ||
+                     $('script:contains("ItemModule")').first().html();
+
+      if (script) {
+        try {
+          const jsonData = JSON.parse(script);
+          videoData = jsonData.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct || 
+                      jsonData.__DEFAULT_SCOPE__?.webapp?.videoDetail?.itemInfo?.itemStruct ||
+                      jsonData.ItemModule?.[videoId];
+        } catch (e) {
+          // Try to extract from embedded JSON
+          const match = script.match(/itemInfo\s*:\s*({.+?})/) || 
+                       script.match(/ItemModule\s*:\s*({.+?})/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              videoData = parsed.itemStruct || parsed[videoId];
+            } catch (e2) {
+              console.log('Failed to parse embedded JSON');
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Metadata extraction error:', error.message);
+    }
+
+    // If we couldn't get metadata from TikTok page, use the video ID to get download links anyway
+    if (!videoData) {
+      console.log('Using fallback data structure');
+      videoData = {
+        id: videoId,
+        desc: "TikTok Video",
+        createTime: Math.floor(Date.now() / 1000),
+        video: {
+          duration: 0,
+          width: 0,
+          height: 0,
+          ratio: "9:16"
+        },
+        stats: {
+          diggCount: 0,
+          commentCount: 0,
+          shareCount: 0,
+          playCount: 0,
+          collectCount: 0
+        },
+        author: {
+          uniqueId: "unknown",
+          nickname: "Unknown User"
+        }
+      };
+    }
+
+    // Get no watermark URL using the original provided URL (short or full)
+    const noWatermarkData = await getNoWatermarkUrl(url);
 
     // Format response
     const response = {
@@ -220,7 +349,8 @@ module.exports = async (url) => {
           id: videoData.id || videoId,
           title: videoData.desc || videoData.title || "TikTok Video",
           caption: videoData.desc || videoData.text || "No caption",
-          original_url: finalUrl,
+          original_url: url,
+          resolved_url: finalUrl !== url ? finalUrl : undefined,
           created_at: videoData.createTime ? new Date(videoData.createTime * 1000).toISOString() : new Date().toISOString(),
           created_at_pretty: videoData.createTime ? 
             new Date(videoData.createTime * 1000).toLocaleString('en-US', {
@@ -304,9 +434,9 @@ module.exports = async (url) => {
       },
       meta: {
         timestamp: new Date().toISOString(),
-        version: "2.0",
+        version: "2.1",
         creator: "WALUKA🇱🇰",
-        methods_attempted: noWatermarkData ? [noWatermarkData.method] : ['tikwm', 'ssstik', 'ttdownloader']
+        methods_attempted: noWatermarkData ? [noWatermarkData.method] : ['tikwm', 'ssstik']
       }
     };
 
@@ -322,7 +452,7 @@ module.exports = async (url) => {
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "2.0",
+        version: "2.1",
         creator: "WALUKA🇱🇰"
       }
     };
