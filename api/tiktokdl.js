@@ -23,6 +23,15 @@ const formatCount = (num) => {
   return num.toString();
 };
 
+// Make sure URL is absolute
+const makeAbsoluteUrl = (url, baseDomain) => {
+  if (!url) return "";
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('//')) return `https:${url}`;
+  if (url.startsWith('/')) return `${baseDomain}${url}`;
+  return `${baseDomain}/${url}`;
+};
+
 // Extract video ID from various TikTok URL formats
 const extractVideoId = (url) => {
   // Pattern 1: Standard URL https://www.tiktok.com/@username/video/1234567890
@@ -108,6 +117,7 @@ const resolveShortUrl = async (shortUrl) => {
 const getNoWatermarkUrl = async (videoUrl) => {
   // Method 1: Using tikwm.com API (Most reliable)
   try {
+    console.log('Trying TikWM API...');
     const tikwmResponse = await axios.post('https://www.tikwm.com/api/', 
       new URLSearchParams({ url: videoUrl, count: 12, cursor: 0, web: 1, hd: 1 }),
       {
@@ -120,10 +130,22 @@ const getNoWatermarkUrl = async (videoUrl) => {
       }
     );
 
+    console.log('TikWM Response:', JSON.stringify(tikwmResponse.data, null, 2));
+
     if (tikwmResponse.data?.data?.play) {
+      // TikWM returns relative paths like /video/media/play/xxx.mp4
+      // We need to convert them to absolute URLs
+      const baseDomain = 'https://www.tikwm.com';
+      const playUrl = makeAbsoluteUrl(tikwmResponse.data.data.play, baseDomain);
+      const hdPlayUrl = tikwmResponse.data.data.hdplay ? 
+        makeAbsoluteUrl(tikwmResponse.data.data.hdplay, baseDomain) : playUrl;
+
+      console.log('TikWM Play URL:', playUrl);
+      console.log('TikWM HD URL:', hdPlayUrl);
+
       return {
-        url: tikwmResponse.data.data.play,
-        hd_url: tikwmResponse.data.data.hdplay || tikwmResponse.data.data.play,
+        url: playUrl,
+        hd_url: hdPlayUrl,
         quality: tikwmResponse.data.data.hdplay ? 'HD' : 'SD',
         method: 'tikwm'
       };
@@ -134,6 +156,7 @@ const getNoWatermarkUrl = async (videoUrl) => {
 
   // Method 2: Using ssstik.io
   try {
+    console.log('Trying ssstik.io API...');
     // First get the token
     const tokenResponse = await axios.get('https://ssstik.io/en', {
       headers: {
@@ -162,6 +185,7 @@ const getNoWatermarkUrl = async (videoUrl) => {
     const downloadLink = $2('a[data-event="download_video"]').attr('href');
 
     if (downloadLink) {
+      console.log('ssstik Download URL:', downloadLink);
       return {
         url: downloadLink,
         quality: 'HD',
@@ -248,7 +272,7 @@ module.exports = async (url) => {
         data: null,
         meta: {
           timestamp: new Date().toISOString(),
-          version: "2.1",
+          version: "2.2",
           creator: "WALUKA🇱🇰"
         }
       };
@@ -434,7 +458,7 @@ module.exports = async (url) => {
       },
       meta: {
         timestamp: new Date().toISOString(),
-        version: "2.1",
+        version: "2.2",
         creator: "WALUKA🇱🇰",
         methods_attempted: noWatermarkData ? [noWatermarkData.method] : ['tikwm', 'ssstik']
       }
@@ -452,7 +476,7 @@ module.exports = async (url) => {
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "2.1",
+        version: "2.2",
         creator: "WALUKA🇱🇰"
       }
     };
