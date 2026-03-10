@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const qs = require('qs');
 
 const formatDuration = (seconds) => {
+  if (!seconds || isNaN(seconds)) return "00:00";
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -15,13 +16,22 @@ const formatCount = (num) => {
   return num.toString();
 };
 
+// Generate dynamic cookie (session based)
+const generateCookie = () => {
+  const randomStr = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return `PHPSESSID=${randomStr}`;
+};
+
 const getVideoData = async (videoUrl) => {
-  const data = { url: videoUrl };
+  // Use URLSearchParams instead of qs for better compatibility
+  const params = new URLSearchParams();
+  params.append('url', videoUrl);
+  
   const headers = {
     "Accept": "*/*",
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
-    "Content-Type": "application/x-www-form-urlencoded",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     "Origin": "https://ytsave.to",
     "Referer": "https://ytsave.to/en2/",
     "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
@@ -31,49 +41,83 @@ const getVideoData = async (videoUrl) => {
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
     "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-    "X-Requested-With": "XMLHttpRequest"
+    "X-Requested-With": "XMLHttpRequest",
+    "Cookie": generateCookie() // Dynamic cookie
   };
 
   try {
     const response = await axios.post(
       "https://ytsave.to/proxy.php",
-      qs.stringify(data),
-      { headers }
+      params.toString(),
+      { 
+        headers,
+        timeout: 30000,
+        maxRedirects: 5
+      }
     );
+    
+    // Debug: log raw response
+    console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
+    
     return response.data;
   } catch (error) {
-    throw new Error('Failed to fetch video data from iloveyt.net');
+    console.error('API Error Details:', error.message);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+    throw new Error(`Failed to fetch video data: ${error.message}`);
   }
 };
 
 const fetchRealDownloadUrl = async (mediaUrl) => {
   try {
-    const response = await axios.get(mediaUrl);
+    const response = await axios.get(mediaUrl, {
+      timeout: 10000,
+      maxRedirects: 5
+    });
+    
     if (response.data && response.data.fileUrl) {
       return response.data.fileUrl;
     }
-    return mediaUrl; // fallback
+    return mediaUrl;
   } catch (err) {
     console.error('Error fetching real media URL:', err.message);
-    return mediaUrl; // fallback
+    return mediaUrl;
   }
 };
 
 module.exports = async (url) => {
   try {
+    // Extract video ID with better regex
     const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-    if (!videoIdMatch) throw new Error('Invalid YouTube URL');
+    if (!videoIdMatch) throw new Error('Invalid YouTube URL format');
     const videoId = videoIdMatch[1];
 
-    // 1. Get raw response
+    console.log(`Processing video ID: ${videoId}`);
+
+    // Get video data from API
     const videoData = await getVideoData(url);
-    if (!videoData || !videoData.api || videoData.api.status !== "OK") {
-      throw new Error('Failed to process YouTube video');
+    
+    // Check if response is valid
+    if (!videoData) {
+      throw new Error('Empty response from API');
     }
 
-    const mediaItems = videoData.api.mediaItems || [];
+    // Handle different response structures
+    const apiData = videoData.api || videoData;
+    
+    if (apiData.status !== "OK" && apiData.status !== "success") {
+      throw new Error(`API Error: ${apiData.message || 'Unknown error'}`);
+    }
 
-    // 2. Construct initial main response
+    const mediaItems = apiData.mediaItems || [];
+    
+    if (mediaItems.length === 0) {
+      throw new Error('No download links found for this video');
+    }
+
+    // Build response
     const mainResponse = {
       status: "success",
       code: 200,
@@ -81,69 +125,77 @@ module.exports = async (url) => {
       data: {
         video_info: {
           id: videoId,
-          title: videoData.api.title || "No title",
-          description: videoData.api.description || "No description",
+          title: apiData.title || "No title",
+          description: apiData.description || "No description",
           original_url: url,
-          previewUrl: videoData.api.previewUrl || "",
-          imagePreviewUrl: videoData.api.imagePreviewUrl || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
-          permanentLink: videoData.api.permanentLink || `https://youtu.be/${videoId}`,
+          previewUrl: apiData.previewUrl || "",
+          imagePreviewUrl: apiData.imagePreviewUrl || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+          permanentLink: apiData.permanentLink || `https://youtu.be/${videoId}`,
           duration: mediaItems[0]?.mediaDuration || 0,
-          duration_formatted: mediaItems[0]?.mediaDuration || "00:00"
+          duration_formatted: formatDuration(mediaItems[0]?.mediaDuration)
         },
         statistics: {
-          views: videoData.api.mediaStats?.viewsCount || 0,
-          views_formatted: formatCount(videoData.api.mediaStats?.viewsCount || 0),
-          likes: videoData.api.mediaStats?.likesCount || 0,
-          likes_formatted: formatCount(videoData.api.mediaStats?.likesCount || 0),
-          comments: videoData.api.mediaStats?.commentsCount || 0,
-          comments_formatted: formatCount(videoData.api.mediaStats?.commentsCount || 0)
+          views: apiData.mediaStats?.viewsCount || 0,
+          views_formatted: formatCount(apiData.mediaStats?.viewsCount),
+          likes: apiData.mediaStats?.likesCount || 0,
+          likes_formatted: formatCount(apiData.mediaStats?.likesCount),
+          comments: apiData.mediaStats?.commentsCount || 0,
+          comments_formatted: formatCount(apiData.mediaStats?.commentsCount)
         },
         download_links: {
           status: true,
-          items: [] // filled next
+          items: []
         },
         author: {
-          name: videoData.api.userInfo?.name || "Unknown",
-          username: videoData.api.userInfo?.username || "",
-          userId: videoData.api.userInfo?.userId || "",
-          avatar: videoData.api.userInfo?.userAvatar || "",
-          bio: videoData.api.userInfo?.userBio || "",
-          verified: videoData.api.userInfo?.isVerified || false,
-          followers: videoData.api.mediaStats?.followersCount || 0,
-          followers_formatted: formatCount(videoData.api.mediaStats?.followersCount || 0),
-          country: videoData.api.userInfo?.accountCountry || ""
+          name: apiData.userInfo?.name || "Unknown",
+          username: apiData.userInfo?.username || "",
+          userId: apiData.userInfo?.userId || "",
+          avatar: apiData.userInfo?.userAvatar || "",
+          bio: apiData.userInfo?.userBio || "",
+          verified: apiData.userInfo?.isVerified || false,
+          followers: apiData.mediaStats?.followersCount || 0,
+          followers_formatted: formatCount(apiData.mediaStats?.followersCount),
+          country: apiData.userInfo?.accountCountry || ""
         }
       },
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0",
-        creator: "YourName",
-        service: "iLoveYT.net"
+        version: "2.0",
+        creator: "WALUKA🇱🇰",
+        service: "ytsave.to"
       }
     };
 
-    // 3. Fetch fileUrl for each mediaUrl and update
-    const updatedItems = await Promise.all(mediaItems.map(async (item) => {
-      const fileUrl = await fetchRealDownloadUrl(item.mediaUrl);
-      return {
-        type: item.type,
-        quality: item.mediaQuality,
-        url: fileUrl, // ← updated here
-        previewUrl: item.mediaPreviewUrl,
-        thumbnail: item.mediaThumbnail,
-        resolution: item.mediaRes,
-        duration: item.mediaDuration,
-        extension: item.mediaExtension,
-        size: item.mediaFileSize
-      };
-    }));
+    // Process download links with better error handling
+    const updatedItems = await Promise.all(
+      mediaItems.map(async (item) => {
+        try {
+          const fileUrl = await fetchRealDownloadUrl(item.mediaUrl);
+          return {
+            type: item.type || 'video',
+            quality: item.mediaQuality || 'unknown',
+            url: fileUrl,
+            previewUrl: item.mediaPreviewUrl || '',
+            thumbnail: item.mediaThumbnail || '',
+            resolution: item.mediaRes || '',
+            duration: item.mediaDuration || 0,
+            extension: item.mediaExtension || 'mp4',
+            size: item.mediaFileSize || 'unknown'
+          };
+        } catch (err) {
+          console.error('Error processing media item:', err.message);
+          return null;
+        }
+      })
+    );
 
-    // 4. Set into main response
-    mainResponse.data.download_links.items = updatedItems;
+    // Filter out null items
+    mainResponse.data.download_links.items = updatedItems.filter(item => item !== null);
 
     return mainResponse;
 
   } catch (error) {
+    console.error('YouTubeDL Error:', error.message);
     return {
       status: "error",
       code: 500,
@@ -151,7 +203,8 @@ module.exports = async (url) => {
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0"
+        version: "2.0",
+        creator: "WALUKA🇱🇰"
       }
     };
   }
