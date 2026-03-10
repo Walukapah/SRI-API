@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cheerio = require('cheerio');
 const qs = require('qs');
 
 const formatDuration = (seconds) => {
@@ -16,13 +17,11 @@ const formatCount = (num) => {
 
 const getVideoData = async (videoUrl) => {
   const data = { url: videoUrl };
-  
-  // Exact headers from browser scrape
   const headers = {
     "Accept": "*/*",
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Content-Type": "application/x-www-form-urlencoded",
     "Origin": "https://ytsave.to",
     "Referer": "https://ytsave.to/en2/",
     "Sec-Ch-Ua": '"Not A(Brand";v="8", "Chromium";v="132"',
@@ -39,37 +38,24 @@ const getVideoData = async (videoUrl) => {
     const response = await axios.post(
       "https://ytsave.to/proxy.php",
       qs.stringify(data),
-      { 
-        headers,
-        decompress: true // Handle gzip encoding
-      }
+      { headers }
     );
     return response.data;
   } catch (error) {
-    console.error('Error fetching video data:', error.message);
-    throw new Error('Failed to fetch video data from ytsave.to');
+    throw new Error('Failed to fetch video data from iloveyt.net');
   }
 };
 
 const fetchRealDownloadUrl = async (mediaUrl) => {
   try {
-    const response = await axios.get(mediaUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9"
-      },
-      maxRedirects: 5,
-      timeout: 10000
-    });
-    
+    const response = await axios.get(mediaUrl);
     if (response.data && response.data.fileUrl) {
       return response.data.fileUrl;
     }
-    return mediaUrl;
+    return mediaUrl; // fallback
   } catch (err) {
     console.error('Error fetching real media URL:', err.message);
-    return mediaUrl;
+    return mediaUrl; // fallback
   }
 };
 
@@ -79,14 +65,15 @@ module.exports = async (url) => {
     if (!videoIdMatch) throw new Error('Invalid YouTube URL');
     const videoId = videoIdMatch[1];
 
+    // 1. Get raw response
     const videoData = await getVideoData(url);
-    
     if (!videoData || !videoData.api || videoData.api.status !== "OK") {
-      throw new Error('Failed to process YouTube video: ' + (videoData?.api?.message || 'Unknown error'));
+      throw new Error('Failed to process YouTube video');
     }
 
     const mediaItems = videoData.api.mediaItems || [];
 
+    // 2. Construct initial main response
     const mainResponse = {
       status: "success",
       code: 200,
@@ -101,7 +88,7 @@ module.exports = async (url) => {
           imagePreviewUrl: videoData.api.imagePreviewUrl || `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
           permanentLink: videoData.api.permanentLink || `https://youtu.be/${videoId}`,
           duration: mediaItems[0]?.mediaDuration || 0,
-          duration_formatted: formatDuration(mediaItems[0]?.mediaDuration || 0)
+          duration_formatted: mediaItems[0]?.mediaDuration || "00:00"
         },
         statistics: {
           views: videoData.api.mediaStats?.viewsCount || 0,
@@ -113,7 +100,7 @@ module.exports = async (url) => {
         },
         download_links: {
           status: true,
-          items: []
+          items: [] // filled next
         },
         author: {
           name: videoData.api.userInfo?.name || "Unknown",
@@ -130,34 +117,33 @@ module.exports = async (url) => {
       meta: {
         timestamp: new Date().toISOString(),
         version: "1.0",
-        creator: "WALUKA🇱🇰",
-        service: "ytsave.to"
+        creator: "YourName",
+        service: "iLoveYT.net"
       }
     };
 
-    if (mediaItems.length > 0) {
-      const updatedItems = await Promise.all(mediaItems.map(async (item) => {
-        const fileUrl = await fetchRealDownloadUrl(item.mediaUrl);
-        return {
-          type: item.type,
-          quality: item.mediaQuality,
-          url: fileUrl,
-          previewUrl: item.mediaPreviewUrl,
-          thumbnail: item.mediaThumbnail,
-          resolution: item.mediaRes,
-          duration: item.mediaDuration,
-          extension: item.mediaExtension,
-          size: item.mediaFileSize
-        };
-      }));
-      
-      mainResponse.data.download_links.items = updatedItems;
-    }
+    // 3. Fetch fileUrl for each mediaUrl and update
+    const updatedItems = await Promise.all(mediaItems.map(async (item) => {
+      const fileUrl = await fetchRealDownloadUrl(item.mediaUrl);
+      return {
+        type: item.type,
+        quality: item.mediaQuality,
+        url: fileUrl, // ← updated here
+        previewUrl: item.mediaPreviewUrl,
+        thumbnail: item.mediaThumbnail,
+        resolution: item.mediaRes,
+        duration: item.mediaDuration,
+        extension: item.mediaExtension,
+        size: item.mediaFileSize
+      };
+    }));
+
+    // 4. Set into main response
+    mainResponse.data.download_links.items = updatedItems;
 
     return mainResponse;
 
   } catch (error) {
-    console.error('YouTubeDL Error:', error.message);
     return {
       status: "error",
       code: 500,
@@ -165,8 +151,7 @@ module.exports = async (url) => {
       data: null,
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.0",
-        creator: "WALUKA🇱🇰"
+        version: "1.0"
       }
     };
   }
