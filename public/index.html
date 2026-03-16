@@ -6,7 +6,7 @@
     <title>SRI API V3.0 - Pure System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -23,6 +23,9 @@
             --accent: #000000;
             --hover: #f5f5f5;
             --code-bg: #0a0a0a;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
             --sidebar-width: 280px;
         }
 
@@ -570,7 +573,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
         }
 
@@ -609,6 +612,66 @@
             border-color: var(--text-primary);
         }
 
+        /* Test Input Section */
+        .test-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .test-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .test-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .test-input {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .test-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .test-input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
         .action-buttons {
             display: flex;
             gap: 12px;
@@ -626,6 +689,140 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             color: var(--text-primary);
+        }
+
+        /* Response Section */
+        .response-section {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .response-section.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .response-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .response-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .response-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .response-body {
+            background: var(--code-bg);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .response-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .response-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .response-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 6px;
+            color: rgba(255,255,255,0.7);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .response-content {
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e4e4e4;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .json-key {
+            color: #7ee787;
+        }
+
+        .json-string {
+            color: #a5d6ff;
+        }
+
+        .json-number {
+            color: #79c0ff;
+        }
+
+        .json-boolean {
+            color: #ff7b72;
+        }
+
+        .json-null {
+            color: #ff7b72;
         }
 
         /* Code Block */
@@ -670,7 +867,7 @@
 
         .code-content {
             padding: 20px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
             line-height: 1.6;
             color: #e4e4e4;
@@ -687,26 +884,6 @@
             user-select: none;
             min-width: 24px;
             text-align: right;
-        }
-
-        .code-text {
-            color: #a5d6ff;
-        }
-
-        .code-key {
-            color: #7ee787;
-        }
-
-        .code-string {
-            color: #a5d6ff;
-        }
-
-        .code-number {
-            color: #79c0ff;
-        }
-
-        .code-boolean {
-            color: #ff7b72;
         }
 
         /* Parameters Table */
@@ -747,7 +924,7 @@
         }
 
         .param-name {
-            font-family: monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-weight: 600;
             color: var(--text-primary);
         }
@@ -767,20 +944,6 @@
             font-size: 11px;
             font-weight: 600;
             margin-left: 8px;
-        }
-
-        /* Response Preview */
-        .response-preview {
-            background: var(--code-bg);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 24px;
-            font-family: monospace;
-            font-size: 12px;
-            line-height: 1.6;
-            color: #e4e4e4;
-            overflow-x: auto;
-            white-space: pre;
         }
 
         /* Footer */
@@ -836,6 +999,10 @@
             
             .action-buttons {
                 flex-direction: column;
+            }
+
+            .response-content {
+                font-size: 11px;
             }
         }
 
@@ -894,6 +1061,22 @@
         .base-url-display strong {
             color: var(--text-primary);
             display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Error Message */
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+
+        .error-title {
+            font-weight: 600;
             margin-bottom: 4px;
         }
     </style>
@@ -1014,36 +1197,19 @@
                     <span class="badge badge-json">JSON</span>
                 </div>
                 
-                <h1 class="detail-title" id="detailTitle">Social Media Downloader (Unified)</h1>
+                <h1 class="detail-title" id="detailTitle">Endpoint Name</h1>
                 <p class="detail-description" id="detailDescription">
-                    Download or fetch content from multiple social platforms using a single unified API route.
+                    Endpoint description goes here.
                 </p>
 
                 <div class="url-label">Endpoint URL</div>
                 <div class="url-box">
-                    <div class="url-content" id="endpointUrl">https://api.sri-lanka.xyz/v2/social?type=&lt;type&gt;...</div>
+                    <div class="url-content" id="endpointUrl">https://api.example.com/endpoint</div>
                     <button class="copy-btn" onclick="copyToClipboard('endpointUrl')">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
-                    </button>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="btn btn-test" onclick="testEndpoint()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                        Test Endpoint
-                    </button>
-                    <button class="btn btn-open" onclick="openInBrowser()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
-                        Open Browser
                     </button>
                 </div>
             </div>
@@ -1065,13 +1231,59 @@
                 </table>
             </div>
 
+            <!-- Test Section -->
+            <div class="test-section">
+                <div class="test-title">Test Endpoint</div>
+                <div class="test-inputs" id="testInputs">
+                    <!-- Dynamic test inputs -->
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-test" onclick="testEndpoint()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <span id="testBtnText">Send Request</span>
+                    </button>
+                    <button class="btn btn-open" onclick="openInBrowser()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        Open in Browser
+                    </button>
+                </div>
+            </div>
+
+            <!-- Response Section -->
+            <div class="response-section" id="responseSection">
+                <div class="response-header">
+                    <div class="response-status" id="responseStatus">
+                        <span class="loading"></span>
+                        Sending Request...
+                    </div>
+                    <div class="response-time" id="responseTime"></div>
+                </div>
+                <div class="response-body">
+                    <div class="response-toolbar">
+                        <span class="response-label">Response Body</span>
+                        <div class="response-actions">
+                            <button class="toolbar-btn" onclick="copyResponse()">Copy</button>
+                            <button class="toolbar-btn" onclick="downloadResponse()">Download</button>
+                        </div>
+                    </div>
+                    <pre class="response-content" id="responseContent">Waiting for request...</pre>
+                </div>
+            </div>
+
             <!-- Code Example -->
             <div class="code-block">
                 <div class="code-header">
                     <div class="code-tabs">
-                        <button class="code-tab active" onclick="switchTab('output')">Output</button>
-                        <button class="code-tab" onclick="switchTab('node')">Node</button>
+                        <button class="code-tab active" onclick="switchTab('curl')">cURL</button>
+                        <button class="code-tab" onclick="switchTab('node')">Node.js</button>
                         <button class="code-tab" onclick="switchTab('python')">Python</button>
+                        <button class="code-tab" onclick="switchTab('php')">PHP</button>
                     </div>
                     <button class="copy-btn" style="border-color: rgba(255,255,255,0.2); background: transparent;" onclick="copyCode()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
@@ -1081,25 +1293,8 @@
                     </button>
                 </div>
                 <div class="code-content" id="codeContent">
-                    <div class="code-line">
-                        <span class="line-number">1</span>
-                        <span><span class="code-key">"status"</span>: <span class="code-boolean">true</span>,</span>
-                    </div>
-                    <div class="code-line">
-                        <span class="line-number">2</span>
-                        <span><span class="code-key">"creator"</span>: <span class="code-string">"WALUKA🇱🇰"</span>,</span>
-                    </div>
-                    <div class="code-line">
-                        <span class="line-number">3</span>
-                        <span><span class="code-key">"result"</span>: { ... }</span>
-                    </div>
+                    <!-- Dynamic code content -->
                 </div>
-            </div>
-
-            <!-- Response Preview -->
-            <div id="responsePreview" style="display: none;">
-                <h3 class="section-subtitle">Response Preview</h3>
-                <div class="response-preview" id="responseContent">Ready to test...</div>
             </div>
         </section>
 
@@ -1120,17 +1315,12 @@
 
     <script>
         // AUTO-DETECT BASE URL
-        const getBaseUrl = () => {
-            // Use current window location origin (works on localhost and any deployed URL)
-            const origin = window.location.origin;
-            return origin;
-        };
-
+        const getBaseUrl = () => window.location.origin;
+        
         // Display current base URL
-        const baseUrl = getBaseUrl();
-        document.getElementById('currentBaseUrl').textContent = baseUrl;
+        document.getElementById('currentBaseUrl').textContent = getBaseUrl();
 
-        // API Data Structure based on your index.js
+        // API Data Structure
         const apiData = {
             download: {
                 title: "Download",
@@ -1142,9 +1332,8 @@
                         method: "GET",
                         description: "Download YouTube videos in multiple formats and qualities using ytsave.to API integration.",
                         params: [
-                            { name: "url", type: "string", required: true, description: "YouTube video URL (youtube.com or youtu.be)" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/youtubedl?url=https://youtube.com/watch?v=dQw4w9WgXcQ`
+                            { name: "url", type: "string", required: true, description: "YouTube video URL (youtube.com or youtu.be)", placeholder: "https://youtube.com/watch?v=dQw4w9WgXcQ" }
+                        ]
                     },
                     {
                         name: "YouTube Downloader V2",
@@ -1152,9 +1341,8 @@
                         method: "GET",
                         description: "Alternative YouTube downloader using ytdown.to API with enhanced format support.",
                         params: [
-                            { name: "url", type: "string", required: true, description: "YouTube video URL" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/youtubedl2?url=https://youtube.com/watch?v=dQw4w9WgXcQ`
+                            { name: "url", type: "string", required: true, description: "YouTube video URL", placeholder: "https://youtube.com/watch?v=dQw4w9WgXcQ" }
+                        ]
                     },
                     {
                         name: "TikTok Downloader",
@@ -1162,9 +1350,8 @@
                         method: "GET",
                         description: "Download TikTok videos without watermark, with metadata and music extraction support.",
                         params: [
-                            { name: "url", type: "string", required: true, description: "TikTok video URL (tiktok.com or vm.tiktok.com)" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/tiktokdl?url=https://tiktok.com/@user/video/1234567890`
+                            { name: "url", type: "string", required: true, description: "TikTok video URL (tiktok.com or vm.tiktok.com)", placeholder: "https://vm.tiktok.com/ABC123/" }
+                        ]
                     },
                     {
                         name: "Instagram Downloader",
@@ -1172,9 +1359,8 @@
                         method: "GET",
                         description: "Download Instagram videos, reels, and images with thumbnail extraction.",
                         params: [
-                            { name: "url", type: "string", required: true, description: "Instagram post/reel URL" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/instagramdl?url=https://instagram.com/p/ABC123DEF/`
+                            { name: "url", type: "string", required: true, description: "Instagram post/reel URL", placeholder: "https://instagram.com/p/ABC123DEF/" }
+                        ]
                     },
                     {
                         name: "Pornhub Downloader",
@@ -1182,9 +1368,8 @@
                         method: "GET",
                         description: "Download videos from Pornhub with multiple quality options (18+).",
                         params: [
-                            { name: "url", type: "string", required: true, description: "Pornhub video URL" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/pornhubdl?url=https://pornhub.com/view_video.php?viewkey=ph1234567890`
+                            { name: "url", type: "string", required: true, description: "Pornhub video URL", placeholder: "https://pornhub.com/view_video.php?viewkey=ph1234567890" }
+                        ]
                     },
                     {
                         name: "Text to Photo",
@@ -1192,10 +1377,9 @@
                         method: "GET",
                         description: "Generate stylized text images using ephoto360, photooxy, and textpro templates.",
                         params: [
-                            { name: "url", type: "string", required: true, description: "Template URL from ephoto360.com, photooxy.com, or textpro.me" },
-                            { name: "text[]", type: "array", required: true, description: "Text parameters (text1, text2, etc.)" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/download/textphoto?url=https://ephoto360.com/...&text1=Hello`
+                            { name: "url", type: "string", required: true, description: "Template URL from ephoto360.com, photooxy.com, or textpro.me", placeholder: "https://ephoto360.com/..." },
+                            { name: "text1", type: "string", required: true, description: "First text parameter", placeholder: "Hello World" }
+                        ]
                     }
                 ]
             },
@@ -1209,10 +1393,9 @@
                         method: "GET",
                         description: "Retrieve detailed player statistics, clan info, and profile data from Free Fire game.",
                         params: [
-                            { name: "region", type: "string", required: true, description: "Game server region (e.g., SG, ID, BR)" },
-                            { name: "uid", type: "string", required: true, description: "Player unique ID number" }
-                        ],
-                        getExample: () => `${getBaseUrl()}/search/freefire?region=SG&uid=123456789`
+                            { name: "region", type: "string", required: true, description: "Game server region (e.g., SG, ID, BR, US)", placeholder: "SG" },
+                            { name: "uid", type: "string", required: true, description: "Player unique ID number", placeholder: "1234567890" }
+                        ]
                     }
                 ]
             }
@@ -1220,6 +1403,8 @@
 
         let currentCategory = null;
         let currentEndpoint = null;
+        let currentResponse = null;
+        let currentTab = 'curl';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -1313,6 +1498,7 @@
         // Show Endpoint Detail
         function showEndpointDetail(category, index) {
             currentEndpoint = apiData[category].endpoints[index];
+            currentResponse = null;
             hideAllSections();
             
             const detail = document.getElementById('endpointDetail');
@@ -1320,9 +1506,11 @@
             
             document.getElementById('detailTitle').textContent = currentEndpoint.name;
             document.getElementById('detailDescription').textContent = currentEndpoint.description;
-            document.getElementById('endpointUrl').textContent = currentEndpoint.getExample();
             
-            // Render params
+            // Update URL display
+            updateEndpointUrl();
+            
+            // Render params table
             const paramsBody = document.getElementById('paramsTableBody');
             paramsBody.innerHTML = '';
             
@@ -1344,7 +1532,247 @@
                 document.getElementById('paramsSection').style.display = 'none';
             }
             
+            // Render test inputs
+            renderTestInputs();
+            
+            // Hide response section
+            document.getElementById('responseSection').classList.remove('active');
+            
+            // Update code examples
+            updateCodeExamples();
+            
             window.scrollTo(0, 0);
+        }
+
+        // Update endpoint URL display
+        function updateEndpointUrl() {
+            const url = buildRequestUrl();
+            document.getElementById('endpointUrl').textContent = url;
+        }
+
+        // Build request URL from inputs
+        function buildRequestUrl() {
+            const baseUrl = getBaseUrl();
+            let url = `${baseUrl}${currentEndpoint.path}`;
+            
+            const params = currentEndpoint.params || [];
+            if (params.length > 0) {
+                const queryParams = [];
+                params.forEach(param => {
+                    const input = document.getElementById(`input-${param.name}`);
+                    const value = input ? input.value : '';
+                    if (value) {
+                        queryParams.push(`${encodeURIComponent(param.name)}=${encodeURIComponent(value)}`);
+                    }
+                });
+                
+                if (queryParams.length > 0) {
+                    url += '?' + queryParams.join('&');
+                }
+            }
+            
+            return url;
+        }
+
+        // Render test inputs
+        function renderTestInputs() {
+            const container = document.getElementById('testInputs');
+            container.innerHTML = '';
+            
+            const params = currentEndpoint.params || [];
+            
+            if (params.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 14px;">No parameters required for this endpoint.</p>';
+                return;
+            }
+            
+            params.forEach(param => {
+                const group = document.createElement('div');
+                group.className = 'input-group';
+                group.innerHTML = `
+                    <label class="input-label">
+                        ${param.name}
+                        ${param.required ? '<span style="color: #ff4444;">*</span>' : ''}
+                    </label>
+                    <input 
+                        type="text" 
+                        id="input-${param.name}" 
+                        class="test-input" 
+                        placeholder="${param.placeholder || ''}"
+                        value="${param.placeholder || ''}"
+                        oninput="updateEndpointUrl(); updateCodeExamples();"
+                    >
+                `;
+                container.appendChild(group);
+            });
+        }
+
+        // Test endpoint with real API call
+        async function testEndpoint() {
+            const responseSection = document.getElementById('responseSection');
+            const responseStatus = document.getElementById('responseStatus');
+            const responseContent = document.getElementById('responseContent');
+            const responseTime = document.getElementById('responseTime');
+            const testBtnText = document.getElementById('testBtnText');
+            
+            // Show loading state
+            responseSection.classList.add('active');
+            responseStatus.className = 'response-status status-loading';
+            responseStatus.innerHTML = '<span class="loading"></span> Sending Request...';
+            responseContent.textContent = 'Waiting for response...';
+            responseTime.textContent = '';
+            testBtnText.textContent = 'Sending...';
+            
+            const startTime = performance.now();
+            
+            try {
+                const url = buildRequestUrl();
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(0);
+                
+                const data = await response.json();
+                currentResponse = data;
+                
+                // Update status
+                if (response.ok && data.status !== false) {
+                    responseStatus.className = 'response-status status-success';
+                    responseStatus.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Success (${response.status})
+                    `;
+                } else {
+                    responseStatus.className = 'response-status status-error';
+                    responseStatus.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Error (${response.status})
+                    `;
+                }
+                
+                responseTime.textContent = `${duration}ms`;
+                
+                // Format and display response
+                const formattedJson = JSON.stringify(data, null, 2);
+                responseContent.innerHTML = syntaxHighlight(formattedJson);
+                
+            } catch (error) {
+                responseStatus.className = 'response-status status-error';
+                responseStatus.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Network Error
+                `;
+                responseTime.textContent = '';
+                responseContent.textContent = `Error: ${error.message}\n\nMake sure the API server is running and accessible.`;
+            } finally {
+                testBtnText.textContent = 'Send Request';
+            }
+        }
+
+        // Syntax highlight JSON
+        function syntaxHighlight(json) {
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                        match = match.slice(0, -1) + '</span>:';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Copy response to clipboard
+        function copyResponse() {
+            if (!currentResponse) return;
+            const json = JSON.stringify(currentResponse, null, 2);
+            navigator.clipboard.writeText(json).then(() => {
+                showToast('Response copied!');
+            });
+        }
+
+        // Download response as JSON file
+        function downloadResponse() {
+            if (!currentResponse) return;
+            const json = JSON.stringify(currentResponse, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `response-${currentEndpoint.path.replace(/\//g, '-')}-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Response downloaded!');
+        }
+
+        // Open in browser
+        function openInBrowser() {
+            const url = buildRequestUrl();
+            window.open(url, '_blank');
+        }
+
+        // Update code examples
+        function updateCodeExamples() {
+            const url = buildRequestUrl();
+            const codeContent = document.getElementById('codeContent');
+            
+            const examples = {
+                curl: `curl -X GET "${url}" \\\n  -H "Accept: application/json"`,
+                
+                node: `const axios = require('axios');\n\nconst url = '${url}';\n\naxios.get(url)\n  .then(response => {\n    console.log(response.data);\n  })\n  .catch(error => {\n    console.error(error);\n  });`,
+                
+                python: `import requests\n\nurl = "${url}"\n\nresponse = requests.get(url)\ndata = response.json()\n\nprint(data)`,
+                
+                php: `<?php\n\n$url = '${url}';\n\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\n\n$data = json_decode($response, true);\nprint_r($data);`
+            };
+            
+            // Format code with line numbers
+            const code = examples[currentTab] || examples.curl;
+            const lines = code.split('\n');
+            codeContent.innerHTML = lines.map((line, i) => `
+                <div class="code-line">
+                    <span class="line-number">${i + 1}</span>
+                    <span>${escapeHtml(line)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Switch code tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            updateCodeExamples();
         }
 
         // Hide all sections
@@ -1363,7 +1791,6 @@
             if (active === 'overview') {
                 document.querySelector('.sidebar-link').classList.add('active');
             } else {
-                // Find link by onclick attribute
                 document.querySelectorAll('.sidebar-link').forEach(link => {
                     if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(active)) {
                         link.classList.add('active');
@@ -1386,7 +1813,8 @@
         }
 
         function copyCode() {
-            const code = document.getElementById('codeContent').textContent;
+            const codeLines = document.querySelectorAll('#codeContent .code-line span:last-child');
+            const code = Array.from(codeLines).map(line => line.textContent).join('\n');
             navigator.clipboard.writeText(code).then(() => {
                 showToast('Code copied!');
             });
@@ -1402,73 +1830,10 @@
             }, 3000);
         }
 
-        // Test endpoint (simulation)
-        function testEndpoint() {
-            const preview = document.getElementById('responsePreview');
-            const content = document.getElementById('responseContent');
-            
-            preview.style.display = 'block';
-            content.textContent = 'Loading...';
-            
-            setTimeout(() => {
-                const mockResponse = {
-                    status: true,
-                    creator: "WALUKA🇱🇰",
-                    result: {
-                        message: "This is a simulated response. In production, this would make an actual API call.",
-                        endpoint: currentEndpoint.path,
-                        timestamp: new Date().toISOString()
-                    }
-                };
-                content.textContent = JSON.stringify(mockResponse, null, 2);
-            }, 1000);
-        }
-
-        // Open in browser
-        function openInBrowser() {
-            if (currentEndpoint && currentEndpoint.getExample) {
-                window.open(currentEndpoint.getExample(), '_blank');
-            }
-        }
-
-        // Switch code tab
-        function switchTab(tab) {
-            document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            const content = document.getElementById('codeContent');
-            
-            if (tab === 'node') {
-                content.innerHTML = `
-                    <div class="code-line"><span class="line-number">1</span><span>const axios = require('axios');</span></div>
-                    <div class="code-line"><span class="line-number">2</span><span></span></div>
-                    <div class="code-line"><span class="line-number">3</span><span>const url = '${currentEndpoint.getExample()}';</span></div>
-                    <div class="code-line"><span class="line-number">4</span><span>axios.get(url).then(res => console.log(res.data));</span></div>
-                `;
-            } else if (tab === 'python') {
-                content.innerHTML = `
-                    <div class="code-line"><span class="line-number">1</span><span>import requests</span></div>
-                    <div class="code-line"><span class="line-number">2</span><span></span></div>
-                    <div class="code-line"><span class="line-number">3</span><span>url = "${currentEndpoint.getExample()}"</span></div>
-                    <div class="code-line"><span class="line-number">4</span><span>response = requests.get(url)</span></div>
-                    <div class="code-line"><span class="line-number">5</span><span>print(response.json())</span></div>
-                `;
-            } else {
-                content.innerHTML = `
-                    <div class="code-line"><span class="line-number">1</span><span>{</span></div>
-                    <div class="code-line"><span class="line-number">2</span><span>  <span class="code-key">"status"</span>: <span class="code-boolean">true</span>,</span></div>
-                    <div class="code-line"><span class="line-number">3</span><span>  <span class="code-key">"creator"</span>: <span class="code-string">"WALUKA🇱🇰"</span>,</span></div>
-                    <div class="code-line"><span class="line-number">4</span><span>  <span class="code-key">"result"</span>: { ... }</span></div>
-                    <div class="code-line"><span class="line-number">5</span><span>}</span></div>
-                `;
-            }
-        }
-
         // Search functionality
         function showSearch() {
             const query = prompt('Search endpoints:');
             if (query) {
-                // Simple search implementation
                 Object.keys(apiData).forEach(catKey => {
                     apiData[catKey].endpoints.forEach((ep, idx) => {
                         if (ep.name.toLowerCase().includes(query.toLowerCase())) {
