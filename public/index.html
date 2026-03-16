@@ -1,32 +1,1483 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TikTok Downloader</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRI API V3.0 - Pure System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border: #e5e5e5;
+            --accent: #000000;
+            --hover: #f5f5f5;
+            --code-bg: #0a0a0a;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Dot Pattern Background */
+        .dot-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle, #d4d4d4 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(250, 250, 250, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .menu-toggle {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .menu-toggle:hover {
+            background: var(--hover);
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .nav-logo {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .search-btn:hover {
+            background: var(--hover);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - 64px);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            z-index: 999;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-item {
+            margin: 2px 0;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            margin: 0 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .sidebar-link:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-link.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .sidebar-icon {
+            width: 20px;
+            height: 20px;
+            opacity: 0.7;
+        }
+
+        .sidebar-link.active .sidebar-icon {
+            opacity: 1;
+        }
+
+        .sidebar-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 64px;
+            margin-left: 0;
+            min-height: calc(100vh - 64px);
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (min-width: 1024px) {
+            .sidebar {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: var(--sidebar-width);
+            }
+            .menu-toggle {
+                display: none;
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 64px);
+            text-align: center;
+            padding: 48px 24px;
+            position: relative;
+        }
+
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .hero-title {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 900;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            margin-bottom: 24px;
+        }
+
+        .hero-title .outline {
+            color: transparent;
+            -webkit-text-stroke: 2px var(--text-primary);
+            text-stroke: 2px var(--text-primary);
+        }
+
+        .hero-description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin-bottom: 48px;
+            line-height: 1.6;
+        }
+
+        .hero-description strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .hero-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        @media (min-width: 480px) {
+            .hero-buttons {
+                flex-direction: row;
+                max-width: none;
+            }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            text-decoration: none;
+            border-radius: 100px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-icon {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.3s;
+        }
+
+        .btn:hover .btn-icon {
+            transform: translateX(4px);
+        }
+
+        /* API Section */
+        .api-section {
+            display: none;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 48px 24px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .api-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            margin-bottom: 32px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+
+        .endpoint-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .endpoint-card:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .endpoint-method {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .endpoint-name {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .endpoint-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .endpoint-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .endpoint-icon svg {
+            width: 24px;
+            height: 24px;
+            opacity: 0.6;
+        }
+
+        /* Detail View */
+        .endpoint-detail {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 48px 24px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .endpoint-detail.active {
+            display: block;
+        }
+
+        .detail-header {
+            margin-bottom: 32px;
+        }
+
+        .detail-badges {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-get {
+            background: var(--accent);
+            color: white;
+        }
+
+        .badge-json {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .detail-title {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+
+        .detail-description {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .url-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 24px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .url-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .url-content {
+            flex: 1;
+            overflow-x: auto;
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+
+        .copy-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: var(--hover);
+            border-color: var(--text-primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin: 24px 0;
+        }
+
+        .btn-test {
+            flex: 1;
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-open {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 24px 0;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .code-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .code-tab.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .code-content {
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e4e4e4;
+            overflow-x: auto;
+        }
+
+        .code-line {
+            display: flex;
+            gap: 16px;
+        }
+
+        .line-number {
+            color: rgba(255,255,255,0.3);
+            user-select: none;
+            min-width: 24px;
+            text-align: right;
+        }
+
+        .code-text {
+            color: #a5d6ff;
+        }
+
+        .code-key {
+            color: #7ee787;
+        }
+
+        .code-string {
+            color: #a5d6ff;
+        }
+
+        .code-number {
+            color: #79c0ff;
+        }
+
+        .code-boolean {
+            color: #ff7b72;
+        }
+
+        /* Parameters Table */
+        .params-section {
+            margin: 32px 0;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .params-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .params-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .param-name {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .param-type {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .param-required {
+            color: #ff4444;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Response Preview */
+        .response-preview {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #e4e4e4;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 48px 24px;
+            border-top: 1px solid var(--border);
+            margin-top: 64px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .footer strong {
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 56px;
+            }
+            
+            .section-title {
+                font-size: 32px;
+            }
+            
+            .detail-title {
+                font-size: 28px;
+            }
+            
+            .endpoint-header {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 9999;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Base URL Display */
+        .base-url-display {
+            position: fixed;
+            bottom: 80px;
+            right: 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .base-url-display strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>TikTok Video Downloader</h1>
-    <div class="input-group">
-      <input type="text" id="tiktokUrl" placeholder="Paste TikTok URL here...">
-      <button id="downloadBtn">Download</button>
-    </div>
-    <div id="result" class="hidden">
-      <div class="video-info">
-        <img id="thumbnail" src="" alt="Video thumbnail">
-        <div>
-          <h3 id="video-title"></h3>
-          <p id="video-stats"></p>
+    <div class="dot-pattern"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="nav-logo">
+                <div class="nav-logo-icon">S</div>
+                <span>SRI API</span>
+            </div>
         </div>
-      </div>
-      <div class="links">
-        <a id="videoLink" class="download-btn">Download Video (No Watermark)</a>
-        <a id="audioLink" class="download-btn">Download Audio</a>
-      </div>
+        <div class="nav-right">
+            <button class="search-btn" onclick="showSearch()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Menu</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a class="sidebar-link active" onclick="showHome()">
+                        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Overview
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">API Collections</div>
+            <ul class="sidebar-menu" id="apiMenu">
+                <!-- Dynamic menu items -->
+            </ul>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home / Hero Section -->
+        <section class="hero" id="homeSection">
+            <div class="version-badge">
+                <span>SRI API V3.0</span>
+            </div>
+            <h1 class="hero-title">
+                PURE<br>
+                <span class="outline">SYSTEM</span>
+            </h1>
+            <p class="hero-description">
+                A minimal, monochromatic registry for high-performance APIs. 
+                <strong>No noise. Just data.</strong>
+            </p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" onclick="scrollToApis()">
+                    Start Browsing
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+                <a href="https://github.com" class="btn btn-secondary" target="_blank">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+        </section>
+
+        <!-- API List Section -->
+        <section class="api-section" id="apiListSection">
+            <div class="section-header">
+                <button class="back-btn" onclick="showHome()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to List
+                </button>
+                <h2 class="section-title" id="listTitle">Download</h2>
+            </div>
+            <div id="endpointsList">
+                <!-- Dynamic endpoints -->
+            </div>
+        </section>
+
+        <!-- Endpoint Detail Section -->
+        <section class="endpoint-detail" id="endpointDetail">
+            <div class="detail-header">
+                <button class="back-btn" onclick="showApiList(currentCategory)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to List
+                </button>
+                
+                <div class="detail-badges">
+                    <span class="badge badge-get">GET</span>
+                    <span class="badge badge-json">JSON</span>
+                </div>
+                
+                <h1 class="detail-title" id="detailTitle">Social Media Downloader (Unified)</h1>
+                <p class="detail-description" id="detailDescription">
+                    Download or fetch content from multiple social platforms using a single unified API route.
+                </p>
+
+                <div class="url-label">Endpoint URL</div>
+                <div class="url-box">
+                    <div class="url-content" id="endpointUrl">https://api.sri-lanka.xyz/v2/social?type=&lt;type&gt;...</div>
+                    <button class="copy-btn" onclick="copyToClipboard('endpointUrl')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-test" onclick="testEndpoint()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Test Endpoint
+                    </button>
+                    <button class="btn btn-open" onclick="openInBrowser()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        Open Browser
+                    </button>
+                </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="params-section" id="paramsSection">
+                <h3 class="section-subtitle">Parameters</h3>
+                <table class="params-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paramsTableBody">
+                        <!-- Dynamic params -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Code Example -->
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="code-tabs">
+                        <button class="code-tab active" onclick="switchTab('output')">Output</button>
+                        <button class="code-tab" onclick="switchTab('node')">Node</button>
+                        <button class="code-tab" onclick="switchTab('python')">Python</button>
+                    </div>
+                    <button class="copy-btn" style="border-color: rgba(255,255,255,0.2); background: transparent;" onclick="copyCode()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="code-content" id="codeContent">
+                    <div class="code-line">
+                        <span class="line-number">1</span>
+                        <span><span class="code-key">"status"</span>: <span class="code-boolean">true</span>,</span>
+                    </div>
+                    <div class="code-line">
+                        <span class="line-number">2</span>
+                        <span><span class="code-key">"creator"</span>: <span class="code-string">"WALUKA🇱🇰"</span>,</span>
+                    </div>
+                    <div class="code-line">
+                        <span class="line-number">3</span>
+                        <span><span class="code-key">"result"</span>: { ... }</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Preview -->
+            <div id="responsePreview" style="display: none;">
+                <h3 class="section-subtitle">Response Preview</h3>
+                <div class="response-preview" id="responseContent">Ready to test...</div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Built with precision by <strong>WALUKA🇱🇰</strong></p>
+            <p style="margin-top: 8px; font-size: 12px;">SRI API V3.0 © 2024</p>
+        </footer>
+    </main>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">Copied to clipboard!</div>
+
+    <!-- Base URL Display -->
+    <div class="base-url-display" id="baseUrlDisplay">
+        <strong>API Base URL</strong>
+        <span id="currentBaseUrl">Detecting...</span>
     </div>
-  </div>
-  <script src="script.js"></script>
+
+    <script>
+        // AUTO-DETECT BASE URL
+        const getBaseUrl = () => {
+            // Use current window location origin (works on localhost and any deployed URL)
+            const origin = window.location.origin;
+            return origin;
+        };
+
+        // Display current base URL
+        const baseUrl = getBaseUrl();
+        document.getElementById('currentBaseUrl').textContent = baseUrl;
+
+        // API Data Structure based on your index.js
+        const apiData = {
+            download: {
+                title: "Download",
+                icon: "download",
+                endpoints: [
+                    {
+                        name: "YouTube Downloader",
+                        path: "/download/youtubedl",
+                        method: "GET",
+                        description: "Download YouTube videos in multiple formats and qualities using ytsave.to API integration.",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "YouTube video URL (youtube.com or youtu.be)" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/youtubedl?url=https://youtube.com/watch?v=dQw4w9WgXcQ`
+                    },
+                    {
+                        name: "YouTube Downloader V2",
+                        path: "/download/youtubedl2",
+                        method: "GET",
+                        description: "Alternative YouTube downloader using ytdown.to API with enhanced format support.",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "YouTube video URL" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/youtubedl2?url=https://youtube.com/watch?v=dQw4w9WgXcQ`
+                    },
+                    {
+                        name: "TikTok Downloader",
+                        path: "/download/tiktokdl",
+                        method: "GET",
+                        description: "Download TikTok videos without watermark, with metadata and music extraction support.",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "TikTok video URL (tiktok.com or vm.tiktok.com)" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/tiktokdl?url=https://tiktok.com/@user/video/1234567890`
+                    },
+                    {
+                        name: "Instagram Downloader",
+                        path: "/download/instagramdl",
+                        method: "GET",
+                        description: "Download Instagram videos, reels, and images with thumbnail extraction.",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "Instagram post/reel URL" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/instagramdl?url=https://instagram.com/p/ABC123DEF/`
+                    },
+                    {
+                        name: "Pornhub Downloader",
+                        path: "/download/pornhubdl",
+                        method: "GET",
+                        description: "Download videos from Pornhub with multiple quality options (18+).",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "Pornhub video URL" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/pornhubdl?url=https://pornhub.com/view_video.php?viewkey=ph1234567890`
+                    },
+                    {
+                        name: "Text to Photo",
+                        path: "/download/textphoto",
+                        method: "GET",
+                        description: "Generate stylized text images using ephoto360, photooxy, and textpro templates.",
+                        params: [
+                            { name: "url", type: "string", required: true, description: "Template URL from ephoto360.com, photooxy.com, or textpro.me" },
+                            { name: "text[]", type: "array", required: true, description: "Text parameters (text1, text2, etc.)" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/download/textphoto?url=https://ephoto360.com/...&text1=Hello`
+                    }
+                ]
+            },
+            search: {
+                title: "Search",
+                icon: "search",
+                endpoints: [
+                    {
+                        name: "Free Fire Player Info",
+                        path: "/search/freefire",
+                        method: "GET",
+                        description: "Retrieve detailed player statistics, clan info, and profile data from Free Fire game.",
+                        params: [
+                            { name: "region", type: "string", required: true, description: "Game server region (e.g., SG, ID, BR)" },
+                            { name: "uid", type: "string", required: true, description: "Player unique ID number" }
+                        ],
+                        getExample: () => `${getBaseUrl()}/search/freefire?region=SG&uid=123456789`
+                    }
+                ]
+            }
+        };
+
+        let currentCategory = null;
+        let currentEndpoint = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+        });
+
+        // Render Sidebar Menu
+        function renderSidebar() {
+            const menu = document.getElementById('apiMenu');
+            menu.innerHTML = '';
+            
+            Object.keys(apiData).forEach(key => {
+                const category = apiData[key];
+                const li = document.createElement('li');
+                li.className = 'sidebar-item';
+                li.innerHTML = `
+                    <a class="sidebar-link" onclick="showApiList('${key}')">
+                        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        ${category.title}
+                    </a>
+                `;
+                menu.appendChild(li);
+            });
+        }
+
+        // Toggle Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // Show Home
+        function showHome() {
+            hideAllSections();
+            document.getElementById('homeSection').style.display = 'flex';
+            updateActiveLink('overview');
+            
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+        }
+
+        // Show API List
+        function showApiList(category) {
+            currentCategory = category;
+            hideAllSections();
+            
+            const section = document.getElementById('apiListSection');
+            section.classList.add('active');
+            
+            const catData = apiData[category];
+            document.getElementById('listTitle').textContent = catData.title;
+            
+            const list = document.getElementById('endpointsList');
+            list.innerHTML = '';
+            
+            catData.endpoints.forEach((endpoint, index) => {
+                const card = document.createElement('div');
+                card.className = 'endpoint-card';
+                card.onclick = () => showEndpointDetail(category, index);
+                card.innerHTML = `
+                    <div class="endpoint-header">
+                        <div>
+                            <span class="endpoint-method">${endpoint.method}</span>
+                            <h3 class="endpoint-name">${endpoint.name}</h3>
+                            <p class="endpoint-description">${endpoint.description}</p>
+                        </div>
+                        <div class="endpoint-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+            
+            updateActiveLink(category);
+            
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+            
+            window.scrollTo(0, 0);
+        }
+
+        // Show Endpoint Detail
+        function showEndpointDetail(category, index) {
+            currentEndpoint = apiData[category].endpoints[index];
+            hideAllSections();
+            
+            const detail = document.getElementById('endpointDetail');
+            detail.classList.add('active');
+            
+            document.getElementById('detailTitle').textContent = currentEndpoint.name;
+            document.getElementById('detailDescription').textContent = currentEndpoint.description;
+            document.getElementById('endpointUrl').textContent = currentEndpoint.getExample();
+            
+            // Render params
+            const paramsBody = document.getElementById('paramsTableBody');
+            paramsBody.innerHTML = '';
+            
+            if (currentEndpoint.params && currentEndpoint.params.length > 0) {
+                document.getElementById('paramsSection').style.display = 'block';
+                currentEndpoint.params.forEach(param => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="param-name">${param.name}</div>
+                            ${param.required ? '<span class="param-required">required</span>' : ''}
+                        </td>
+                        <td><span class="param-type">${param.type}</span></td>
+                        <td>${param.description}</td>
+                    `;
+                    paramsBody.appendChild(row);
+                });
+            } else {
+                document.getElementById('paramsSection').style.display = 'none';
+            }
+            
+            window.scrollTo(0, 0);
+        }
+
+        // Hide all sections
+        function hideAllSections() {
+            document.getElementById('homeSection').style.display = 'none';
+            document.getElementById('apiListSection').classList.remove('active');
+            document.getElementById('endpointDetail').classList.remove('active');
+        }
+
+        // Update active sidebar link
+        function updateActiveLink(active) {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            if (active === 'overview') {
+                document.querySelector('.sidebar-link').classList.add('active');
+            } else {
+                // Find link by onclick attribute
+                document.querySelectorAll('.sidebar-link').forEach(link => {
+                    if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(active)) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        }
+
+        // Scroll to APIs from hero
+        function scrollToApis() {
+            showApiList('download');
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard!');
+            });
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeContent').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Code copied!');
+            });
+        }
+
+        // Show toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Test endpoint (simulation)
+        function testEndpoint() {
+            const preview = document.getElementById('responsePreview');
+            const content = document.getElementById('responseContent');
+            
+            preview.style.display = 'block';
+            content.textContent = 'Loading...';
+            
+            setTimeout(() => {
+                const mockResponse = {
+                    status: true,
+                    creator: "WALUKA🇱🇰",
+                    result: {
+                        message: "This is a simulated response. In production, this would make an actual API call.",
+                        endpoint: currentEndpoint.path,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+                content.textContent = JSON.stringify(mockResponse, null, 2);
+            }, 1000);
+        }
+
+        // Open in browser
+        function openInBrowser() {
+            if (currentEndpoint && currentEndpoint.getExample) {
+                window.open(currentEndpoint.getExample(), '_blank');
+            }
+        }
+
+        // Switch code tab
+        function switchTab(tab) {
+            document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const content = document.getElementById('codeContent');
+            
+            if (tab === 'node') {
+                content.innerHTML = `
+                    <div class="code-line"><span class="line-number">1</span><span>const axios = require('axios');</span></div>
+                    <div class="code-line"><span class="line-number">2</span><span></span></div>
+                    <div class="code-line"><span class="line-number">3</span><span>const url = '${currentEndpoint.getExample()}';</span></div>
+                    <div class="code-line"><span class="line-number">4</span><span>axios.get(url).then(res => console.log(res.data));</span></div>
+                `;
+            } else if (tab === 'python') {
+                content.innerHTML = `
+                    <div class="code-line"><span class="line-number">1</span><span>import requests</span></div>
+                    <div class="code-line"><span class="line-number">2</span><span></span></div>
+                    <div class="code-line"><span class="line-number">3</span><span>url = "${currentEndpoint.getExample()}"</span></div>
+                    <div class="code-line"><span class="line-number">4</span><span>response = requests.get(url)</span></div>
+                    <div class="code-line"><span class="line-number">5</span><span>print(response.json())</span></div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="code-line"><span class="line-number">1</span><span>{</span></div>
+                    <div class="code-line"><span class="line-number">2</span><span>  <span class="code-key">"status"</span>: <span class="code-boolean">true</span>,</span></div>
+                    <div class="code-line"><span class="line-number">3</span><span>  <span class="code-key">"creator"</span>: <span class="code-string">"WALUKA🇱🇰"</span>,</span></div>
+                    <div class="code-line"><span class="line-number">4</span><span>  <span class="code-key">"result"</span>: { ... }</span></div>
+                    <div class="code-line"><span class="line-number">5</span><span>}</span></div>
+                `;
+            }
+        }
+
+        // Search functionality
+        function showSearch() {
+            const query = prompt('Search endpoints:');
+            if (query) {
+                // Simple search implementation
+                Object.keys(apiData).forEach(catKey => {
+                    apiData[catKey].endpoints.forEach((ep, idx) => {
+                        if (ep.name.toLowerCase().includes(query.toLowerCase())) {
+                            showEndpointDetail(catKey, idx);
+                        }
+                    });
+                });
+            }
+        }
+    </script>
 </body>
 </html>
