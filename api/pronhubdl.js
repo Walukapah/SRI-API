@@ -1,58 +1,67 @@
-const axios = require('axios');
+const axios = require("axios");
 
-const getPornhubVideo = async (videoUrl) => {
-  const koyebUrl = `https://sri-api.koyeb.app/api/video?url=${encodeURIComponent(videoUrl)}`;
-  const xxvidUrl = 'https://xxx.xxvid.download/xxx-download/video-info-v3';
-
-  const xxvidPayload = {
-    app_id: 'pornhub_downloader',
-    platform: 'Pornhub',
-    url: videoUrl
-  };
-
-  const headers = {
-    'Accept': '*/*',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Content-Type': 'application/json',
-    'Origin': 'https://pornhubdownloader.io',
-    'Referer': 'https://pornhubdownloader.io/',
-    'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132"',
-    'Sec-Ch-Ua-Mobile': '?1',
-    'Sec-Ch-Ua-Platform': '"Android"',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'cross-site',
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
-  };
-
+async function pornhubdl(url) {
   try {
-    // Get data from both APIs
-    const koyebRes = await axios.get(koyebUrl);
-    const koyebData = koyebRes.data;
+    // Fetch page HTML
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
 
-    const xxvidRes = await axios.post(xxvidUrl, xxvidPayload, { headers });
-    const xxvidData = xxvidRes.data;
+    // Extract JSON player data
+    const jsonMatch = data.match(/var flashvars_\d+\s*=\s*(\{.*?\});/s);
+    if (!jsonMatch) throw new Error("Video data not found");
 
-    if (!koyebData || koyebRes.status !== 200) throw new Error("Koyeb API error");
-    if (xxvidData.code !== 200 || !xxvidData.data) throw new Error("XXVID API error");
+    const jsonData = JSON.parse(jsonMatch[1]);
 
-    // Combine all into Koyeb structure + add xxvid videos
-    return {
-      ...koyebData,
-      videos: [
-        ...(koyebData.videos || []),
-        ...xxvidData.data.videos.map(v => ({
-          quality: v.quality,
-          url: v.url,
-          source: "xxvid"
-        }))
-      ]
+    // Basic info
+    const result = {
+      title: jsonData.video_title || null,
+      views: jsonData.view_count || 0,
+      duration: jsonData.video_duration || 0,
+      durationFormatted: formatDuration(jsonData.video_duration),
+      vote: {
+        up: jsonData.rating ? jsonData.rating.likes : 0,
+        down: jsonData.rating ? jsonData.rating.dislikes : 0,
+        total: jsonData.rating ? jsonData.rating.likes + jsonData.rating.dislikes : 0,
+        rating: jsonData.rating ? jsonData.rating.rating : 0
+      },
+      premium: jsonData.is_premium || false,
+      thumb: jsonData.image_url || null,
+      provider: {
+        username: jsonData.video_uploader || "unknown",
+        url: jsonData.uploader_profile_url || null
+      },
+      tags: jsonData.tags || [],
+      categories: jsonData.categories || [],
+      pornstars: jsonData.pornstars || [],
+      mediaDefinitions: []
     };
 
-  } catch (err) {
-    throw new Error(err.response?.data?.message || err.message);
-  }
-};
+    // Extract video qualities
+    if (jsonData.mediaDefinitions) {
+      result.mediaDefinitions = jsonData.mediaDefinitions.map((v) => ({
+        defaultQuality: v.defaultQuality || false,
+        format: v.format || "mp4",
+        quality: v.quality,
+        videoUrl: v.videoUrl
+      }));
+    }
 
-module.exports = getPornhubVideo;
+    return result;
+
+  } catch (err) {
+    throw new Error("Failed to fetch Pornhub data: " + err.message);
+  }
+}
+
+// Helper: format seconds → mm:ss
+function formatDuration(sec) {
+  if (!sec) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+module.exports = pornhubdl;
