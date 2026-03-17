@@ -2,30 +2,48 @@ const axios = require("axios");
 
 async function pornhubdl(url) {
   try {
-    // Fetch page HTML
     const { data } = await axios.get(url, {
       headers: {
         "User-Agent": "Mozilla/5.0"
       }
     });
 
-    // Extract JSON player data
-    const jsonMatch = data.match(/var flashvars_\d+\s*=\s*(\{.*?\});/s);
-    if (!jsonMatch) throw new Error("Video data not found");
+    // Try multiple patterns
+    let jsonData = null;
 
-    const jsonData = JSON.parse(jsonMatch[1]);
+    // Method 1: flashvars (old)
+    let match = data.match(/var flashvars_\d+\s*=\s*(\{.*?\});/s);
 
-    // Basic info
+    if (match) {
+      jsonData = JSON.parse(match[1]);
+    } else {
+      // Method 2: mediaDefinitions directly
+      let mediaMatch = data.match(/"mediaDefinitions":(\[.*?\])/s);
+      let titleMatch = data.match(/<title>(.*?)<\/title>/);
+
+      if (!mediaMatch) {
+        throw new Error("Media definitions not found");
+      }
+
+      const mediaDefinitions = JSON.parse(mediaMatch[1]);
+
+      jsonData = {
+        video_title: titleMatch ? titleMatch[1] : "Unknown",
+        mediaDefinitions: mediaDefinitions
+      };
+    }
+
+    // Build response
     const result = {
       title: jsonData.video_title || null,
       views: jsonData.view_count || 0,
       duration: jsonData.video_duration || 0,
-      durationFormatted: formatDuration(jsonData.video_duration),
+      durationFormatted: formatDuration(jsonData.video_duration || 0),
       vote: {
-        up: jsonData.rating ? jsonData.rating.likes : 0,
-        down: jsonData.rating ? jsonData.rating.dislikes : 0,
-        total: jsonData.rating ? jsonData.rating.likes + jsonData.rating.dislikes : 0,
-        rating: jsonData.rating ? jsonData.rating.rating : 0
+        up: jsonData.rating?.likes || 0,
+        down: jsonData.rating?.dislikes || 0,
+        total: (jsonData.rating?.likes || 0) + (jsonData.rating?.dislikes || 0),
+        rating: jsonData.rating?.rating || 0
       },
       premium: jsonData.is_premium || false,
       thumb: jsonData.image_url || null,
@@ -39,11 +57,11 @@ async function pornhubdl(url) {
       mediaDefinitions: []
     };
 
-    // Extract video qualities
+    // Extract video links
     if (jsonData.mediaDefinitions) {
       result.mediaDefinitions = jsonData.mediaDefinitions.map((v) => ({
         defaultQuality: v.defaultQuality || false,
-        format: v.format || "mp4",
+        format: v.format || "hls",
         quality: v.quality,
         videoUrl: v.videoUrl
       }));
@@ -56,9 +74,7 @@ async function pornhubdl(url) {
   }
 }
 
-// Helper: format seconds → mm:ss
 function formatDuration(sec) {
-  if (!sec) return "0:00";
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
