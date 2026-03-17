@@ -749,7 +749,8 @@
         }
 
         function updateEndpointUrl() {
-            document.getElementById('endpointUrl').textContent = buildRequestUrl();
+            const baseUrl = getBaseUrl();
+            document.getElementById('endpointUrl').textContent = `${baseUrl}${currentEndpoint.path}`;
         }
 
         function buildRequestUrl() {
