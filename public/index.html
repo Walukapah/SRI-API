@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SRI API V3.0 - Pure System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,12 +29,17 @@
             --sidebar-width: 320px;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* Dot Pattern Background */
@@ -109,6 +114,7 @@
             align-items: center;
             gap: 8px;
             cursor: pointer;
+            user-select: none;
         }
 
         .nav-logo:hover {
@@ -331,6 +337,54 @@
             background: rgba(255,255,255,0.2);
         }
 
+        /* Status Indicator */
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .status-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 2s ease-out infinite;
+        }
+
+        .status-online {
+            background: var(--success);
+        }
+
+        .status-online::after {
+            background: var(--success);
+        }
+
+        .status-offline {
+            background: var(--error);
+        }
+
+        .status-offline::after {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2.5);
+                opacity: 0;
+            }
+        }
+
         .no-results {
             padding: 40px 20px;
             text-align: center;
@@ -373,6 +427,9 @@
             .menu-toggle {
                 display: none;
             }
+            .sidebar-overlay {
+                display: none !important;
+            }
         }
 
         /* Hero Section */
@@ -410,16 +467,16 @@
         }
 
         .hero-title {
-            font-size: clamp(48px, 12vw, 96px);
+            font-size: clamp(36px, 10vw, 80px);
             font-weight: 900;
-            line-height: 0.9;
+            line-height: 0.95;
             letter-spacing: -0.04em;
             margin-bottom: 24px;
             transition: all 0.3s ease;
         }
 
         .hero.compact .hero-title {
-            font-size: clamp(32px, 8vw, 64px);
+            font-size: clamp(28px, 6vw, 56px);
             margin-bottom: 16px;
         }
 
@@ -429,18 +486,25 @@
             text-stroke: 2px var(--text-primary);
         }
 
+        @media (max-width: 480px) {
+            .hero-title .outline {
+                -webkit-text-stroke: 1.5px var(--text-primary);
+            }
+        }
+
         .hero-description {
-            font-size: 18px;
+            font-size: clamp(14px, 3vw, 18px);
             color: var(--text-secondary);
             max-width: 480px;
             margin-bottom: 48px;
             line-height: 1.6;
             transition: all 0.3s ease;
+            padding: 0 16px;
         }
 
         .hero.compact .hero-description {
             margin-bottom: 24px;
-            font-size: 16px;
+            font-size: clamp(13px, 2.5vw, 16px);
         }
 
         .hero-description strong {
@@ -455,6 +519,7 @@
             margin: 0 auto 32px;
             position: relative;
             z-index: 10;
+            padding: 0 16px;
         }
 
         .home-search-box {
@@ -495,10 +560,18 @@
             color: var(--text-primary);
             outline: none;
             font-family: 'Inter', sans-serif;
+            min-width: 0;
         }
 
         .home-search-input::placeholder {
             color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .home-search-input::placeholder {
+                font-size: 13px;
+            }
         }
 
         .home-search-clear {
@@ -513,6 +586,7 @@
             justify-content: center;
             color: var(--text-secondary);
             transition: all 0.2s;
+            flex-shrink: 0;
         }
 
         .home-search-clear.visible {
@@ -533,6 +607,13 @@
             color: var(--text-secondary);
             font-family: 'JetBrains Mono', monospace;
             margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 480px) {
+            .home-search-shortcut {
+                display: none;
+            }
         }
 
         /* Search Results Section */
@@ -567,6 +648,8 @@
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .search-results-title {
@@ -590,6 +673,12 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .search-results-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .search-result-card {
@@ -753,13 +842,16 @@
             flex-direction: column;
             gap: 16px;
             width: 100%;
-            max-width: 320px;
+            max-width: 400px;
+            align-items: center;
+            justify-content: center;
         }
 
         @media (min-width: 480px) {
             .hero-buttons {
                 flex-direction: row;
                 max-width: none;
+                justify-content: center;
             }
         }
 
@@ -780,6 +872,16 @@
             border: none;
             position: relative;
             overflow: hidden;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 480px) {
+            .btn {
+                padding: 14px 24px;
+                font-size: 13px;
+                width: 100%;
+                max-width: 280px;
+            }
         }
 
         .btn-primary {
@@ -860,7 +962,7 @@
         }
 
         .section-title {
-            font-size: 48px;
+            font-size: clamp(28px, 6vw, 48px);
             font-weight: 800;
             letter-spacing: -0.03em;
             margin-bottom: 16px;
@@ -887,7 +989,12 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .endpoint-header {
+                flex-direction: column;
+            }
         }
 
         .endpoint-method {
@@ -904,7 +1011,7 @@
         }
 
         .endpoint-name {
-            font-size: 20px;
+            font-size: clamp(16px, 4vw, 20px);
             font-weight: 700;
             letter-spacing: -0.02em;
             margin-bottom: 8px;
@@ -955,6 +1062,7 @@
             display: flex;
             gap: 12px;
             margin-bottom: 16px;
+            flex-wrap: wrap;
         }
 
         .badge {
@@ -978,7 +1086,7 @@
         }
 
         .detail-title {
-            font-size: 42px;
+            font-size: clamp(24px, 5vw, 42px);
             font-weight: 800;
             letter-spacing: -0.03em;
             line-height: 1.1;
@@ -1002,6 +1110,7 @@
             gap: 12px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
+            overflow-x: auto;
         }
 
         .url-label {
@@ -1018,6 +1127,7 @@
             overflow-x: auto;
             white-space: nowrap;
             color: var(--text-primary);
+            min-width: 0;
         }
 
         .copy-btn {
@@ -1087,6 +1197,7 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             transition: all 0.2s;
+            width: 100%;
         }
 
         .test-input:focus {
@@ -1103,6 +1214,17 @@
             display: flex;
             gap: 12px;
             margin: 24px 0;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 480px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons .btn {
+                max-width: none;
+            }
         }
 
         .btn-test {
@@ -1139,6 +1261,8 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .response-status {
@@ -1187,6 +1311,8 @@
             padding: 12px 20px;
             background: rgba(255,255,255,0.05);
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .response-label {
@@ -1232,6 +1358,13 @@
             overflow-y: auto;
         }
 
+        @media (max-width: 480px) {
+            .response-content {
+                font-size: 11px;
+                padding: 16px;
+            }
+        }
+
         .json-key {
             color: #7ee787;
         }
@@ -1266,11 +1399,14 @@
             justify-content: space-between;
             padding: 16px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .code-tabs {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .code-tab {
@@ -1299,6 +1435,13 @@
             line-height: 1.6;
             color: #e4e4e4;
             overflow-x: auto;
+        }
+
+        @media (max-width: 480px) {
+            .code-content {
+                font-size: 11px;
+                padding: 16px;
+            }
         }
 
         .code-line {
@@ -1348,6 +1491,17 @@
             padding: 16px;
             border-bottom: 1px solid var(--border);
             vertical-align: top;
+        }
+
+        @media (max-width: 640px) {
+            .params-table {
+                font-size: 12px;
+            }
+            
+            .params-table th,
+            .params-table td {
+                padding: 10px 8px;
+            }
         }
 
         .param-name {
@@ -1408,40 +1562,25 @@
 
         /* Mobile Optimizations */
         @media (max-width: 768px) {
-            .hero-title {
-                font-size: 56px;
-            }
-            
-            .hero.compact .hero-title {
-                font-size: 36px;
-            }
-            
-            .section-title {
-                font-size: 32px;
-            }
-            
-            .detail-title {
-                font-size: 28px;
-            }
-            
-            .endpoint-header {
-                flex-direction: column;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .response-content {
-                font-size: 11px;
-            }
-
-            .search-results-grid {
-                grid-template-columns: 1fr;
-            }
-
             :root {
                 --sidebar-width: 280px;
+            }
+            
+            .navbar {
+                padding: 0 16px;
+            }
+            
+            .hero {
+                padding: 32px 16px;
+            }
+            
+            .api-section,
+            .endpoint-detail {
+                padding: 24px 16px;
+            }
+            
+            .search-results-section {
+                padding: 0 16px 32px;
             }
         }
 
@@ -1477,6 +1616,15 @@
             z-index: 9999;
         }
 
+        @media (max-width: 480px) {
+            .toast {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                text-align: center;
+            }
+        }
+
         .toast.show {
             transform: translateY(0);
             opacity: 1;
@@ -1495,6 +1643,12 @@
             color: var(--text-secondary);
             z-index: 100;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .base-url-display {
+                display: none;
+            }
         }
 
         .base-url-display strong {
@@ -1794,16 +1948,18 @@
         // Display current base URL
         document.getElementById('currentBaseUrl').textContent = getBaseUrl();
 
-        // API Data Structure
+        // API Data Structure with status
         const apiData = {
             download: {
                 title: "Download",
                 icon: "download",
+                status: "online",
                 endpoints: [
                     {
                         name: "YouTube Downloader",
                         path: "/download/youtubedl",
                         method: "GET",
+                        status: "online",
                         description: "Download YouTube videos in multiple formats and qualities using ytsave.to API integration.",
                         params: [
                             { name: "url", type: "string", required: true, description: "YouTube video URL (youtube.com or youtu.be)", placeholder: "https://youtube.com/watch?v=dQw4w9WgXcQ" }
@@ -1813,6 +1969,7 @@
                         name: "YouTube Downloader V2",
                         path: "/download/youtubedl2",
                         method: "GET",
+                        status: "online",
                         description: "Alternative YouTube downloader using ytdown.to API with enhanced format support.",
                         params: [
                             { name: "url", type: "string", required: true, description: "YouTube video URL", placeholder: "https://youtube.com/watch?v=dQw4w9WgXcQ" }
@@ -1822,6 +1979,7 @@
                         name: "TikTok Downloader",
                         path: "/download/tiktokdl",
                         method: "GET",
+                        status: "online",
                         description: "Download TikTok videos without watermark, with metadata and music extraction support.",
                         params: [
                             { name: "url", type: "string", required: true, description: "TikTok video URL (tiktok.com or vm.tiktok.com)", placeholder: "https://vm.tiktok.com/ABC123/" }
@@ -1831,6 +1989,7 @@
                         name: "Instagram Downloader",
                         path: "/download/instagramdl",
                         method: "GET",
+                        status: "online",
                         description: "Download Instagram videos, reels, and images with thumbnail extraction.",
                         params: [
                             { name: "url", type: "string", required: true, description: "Instagram post/reel URL", placeholder: "https://instagram.com/p/ABC123DEF/" }
@@ -1840,6 +1999,7 @@
                         name: "Pornhub Downloader",
                         path: "/download/pornhubdl",
                         method: "GET",
+                        status: "offline",
                         description: "Download videos from Pornhub with multiple quality options (18+).",
                         params: [
                             { name: "url", type: "string", required: true, description: "Pornhub video URL", placeholder: "https://pornhub.com/view_video.php?viewkey=ph1234567890" }
@@ -1849,6 +2009,7 @@
                         name: "Text to Photo",
                         path: "/download/textphoto",
                         method: "GET",
+                        status: "online",
                         description: "Generate stylized text images using ephoto360, photooxy, and textpro templates.",
                         params: [
                             { name: "url", type: "string", required: true, description: "Template URL from ephoto360.com, photooxy.com, or textpro.me", placeholder: "https://ephoto360.com/..." },
@@ -1860,11 +2021,13 @@
             search: {
                 title: "Search",
                 icon: "search",
+                status: "online",
                 endpoints: [
                     {
                         name: "Free Fire Player Info",
                         path: "/search/freefire",
                         method: "GET",
+                        status: "online",
                         description: "Retrieve detailed player statistics, clan info, and profile data from Free Fire game.",
                         params: [
                             { name: "region", type: "string", required: true, description: "Game server region (e.g., SG, ID, BR, US)", placeholder: "SG" },
@@ -2057,7 +2220,7 @@
             heroButtons.style.display = 'flex';
             searchResultsSection.classList.remove('active');
             homeSearchClear.classList.remove('visible');
-            input.focus();
+            // Don't auto-focus input
         }
 
         // Render Sidebar with Filter
@@ -2090,8 +2253,12 @@
                 
                 const title = document.createElement('div');
                 title.className = 'sidebar-section-title';
+                const statusClass = category.status === 'online' ? 'status-online' : 'status-offline';
                 title.innerHTML = `
-                    ${category.title}
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-indicator ${statusClass}"></span>
+                        ${category.title}
+                    </span>
                     <span class="sidebar-section-count">${filteredEndpoints.length}</span>
                 `;
                 section.appendChild(title);
@@ -2123,7 +2290,10 @@
                         if (window.innerWidth < 1024) toggleSidebar();
                     };
                     
+                    const statusClass = endpoint.status === 'online' ? 'status-online' : 'status-offline';
+                    
                     link.innerHTML = `
+                        <span class="status-indicator ${statusClass}"></span>
                         <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
@@ -2169,7 +2339,7 @@
             sidebarSearchQuery = '';
             sidebarSearchInput.value = '';
             sidebarSearchClear.classList.remove('visible');
-            sidebarSearchInput.focus();
+            // Don't auto-focus input
             renderSidebar();
         }
 
@@ -2202,8 +2372,8 @@
                         return;
                     }
                     
-                    // Close sidebar if open
-                    if (sidebar.classList.contains('active')) {
+                    // Close sidebar if open (mobile only)
+                    if (sidebar.classList.contains('active') && window.innerWidth < 1024) {
                         toggleSidebar();
                     }
                 }
@@ -2223,9 +2393,18 @@
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
             
-            if (sidebar.classList.contains('active')) {
-                setTimeout(() => sidebarSearchInput.focus(), 100);
-            }
+            // Don't auto-focus the search input anymore
+            // if (sidebar.classList.contains('active')) {
+            //     setTimeout(() => sidebarSearchInput.focus(), 100);
+            // }
+        }
+
+        // Close sidebar (for mobile)
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
         }
 
         // Show Home
@@ -2245,6 +2424,12 @@
             // Clear search
             clearHomeSearch();
             renderSidebar();
+            
+            // Close sidebar if open
+            closeSidebar();
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
         }
 
         // Show API List
@@ -2266,10 +2451,16 @@
                 const card = document.createElement('div');
                 card.className = 'endpoint-card';
                 card.onclick = () => showEndpointDetail(category, index);
+                
+                const statusClass = endpoint.status === 'online' ? 'status-online' : 'status-offline';
+                
                 card.innerHTML = `
                     <div class="endpoint-header">
-                        <div>
-                            <span class="endpoint-method">${endpoint.method}</span>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span class="endpoint-method">${endpoint.method}</span>
+                                <span class="status-indicator ${statusClass}"></span>
+                            </div>
                             <h3 class="endpoint-name">${endpoint.name}</h3>
                             <p class="endpoint-description">${endpoint.description}</p>
                         </div>
@@ -2285,9 +2476,10 @@
             
             renderSidebar();
             
-            if (window.innerWidth < 1024) {
-                toggleSidebar();
-            }
+            // Don't toggle sidebar when coming back from detail view
+            // if (window.innerWidth < 1024) {
+            //     toggleSidebar();
+            // }
             
             window.scrollTo(0, 0);
         }
