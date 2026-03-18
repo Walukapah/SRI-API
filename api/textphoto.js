@@ -3,7 +3,9 @@ const cheerio = require("cheerio");
 const FormData = require("form-data");
 
 async function maker(url, text) {
-   if (!/https?:\/\/(ephoto360|photooxy|textpro)\.(com|me)/i.test(url)) throw new Error("URL Invalid");
+   if (!/https?:\/\/(ephoto360|photooxy|textpro)\.(com|me)/i.test(url)) {
+      throw new Error("URL Invalid - Only ephoto360, photooxy, and textpro websites are supported");
+   }
    
    try {
       let a = await axios.get(url, {
@@ -53,21 +55,21 @@ async function maker(url, text) {
       if (typeof text == "string") text = [text];
       for (let i of text) form.append("text[]", i);
 
+      let cookies = a.headers['set-cookie'] ? a.headers['set-cookie'].join("; ") : '';
+
       let b = await axios.post(url, form, {
          headers: {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Origin": (new URL(url)).origin,
             "Referer": url,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188", 
-            "Cookie": a.headers["set-cookie"]?.join("; ") || "",
+            "Cookie": cookies,
             ...form.getHeaders()
          }
       });
 
       $ = cheerio.load(b.data);
       let out = ($('#form_value').first().text() || $('#form_value_input').first().text() || $('#form_value').first().val() || $('#form_value_input').first().val());
-
-      if (!out) throw new Error("Failed to get form value");
 
       let c = await axios.post((new URL(url)).origin + "/effect/create-image", JSON.parse(out), {
          headers: {
@@ -76,41 +78,17 @@ async function maker(url, text) {
             "Origin": (new URL(url)).origin,
             "Referer": url,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188",
-            "Cookie": a.headers["set-cookie"]?.join("; ") || ""
+            "Cookie": cookies
          }
       });
 
       return {
-         status: "success",
-         code: 200,
-         message: "Image generated successfully",
-         data: {
-            image_info: {
-               original_url: url,
-               texts_used: text,
-               image_url: server + (c.data?.fullsize_image || c.data?.image || ""),
-               session_id: c.data?.session_id || ""
-            }
-         },
-         meta: {
-            timestamp: new Date().toISOString(),
-            version: "1.0",
-            creator: "WALUKA🇱🇰",
-            service: "TextPhotoGenerator"
-         }
+         status: c.data?.success || true,
+         image: server + (c.data?.fullsize_image || c.data?.image || ""),
+         session: c.data?.session_id
       };
-
    } catch (e) {
-      return {
-         status: "error",
-         code: 500,
-         message: e.message,
-         data: null,
-         meta: {
-            timestamp: new Date().toISOString(),
-            version: "1.0"
-         }
-      };
+      throw e;
    }
 }
 
