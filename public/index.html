@@ -426,14 +426,14 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
-            Auto Health Check
+            API Health Check
         </div>
         <div class="health-check-status" id="healthCheckStatus">
             <span class="status-indicator status-checking"></span>
-            <span>Checking...</span>
+            <span>Not checked yet</span>
         </div>
-        <div class="health-check-time" id="healthCheckTime">Last checked: Never</div>
-        <button class="health-check-btn" id="healthCheckBtn" onclick="manualHealthCheck()">Check Now</button>
+        <div class="health-check-time" id="healthCheckTime">Click button to check</div>
+        <button class="health-check-btn" id="healthCheckBtn" onclick="manualHealthCheck()">Check All APIs</button>
     </div>
 
     <script>
@@ -464,44 +464,177 @@
 
         let currentCategory = null, currentEndpoint = null, currentResponse = null, currentTab = 'curl', sidebarSearchQuery = '', isShowingAllApis = false;
 
+        // ============================================
+        // NO AUTO CHECK ON PAGE LOAD - MANUAL ONLY
+        // ============================================
+        
         document.addEventListener('DOMContentLoaded', () => {
             renderSidebar();
             setupKeyboardShortcuts();
             setupHomeSearch();
-            checkAllApiStatus();
+            // DO NOT call checkAllApiStatus() here - manual only
+            restoreSavedStatus();
         });
 
-        async function checkApiStatus(categoryKey, endpointIndex) {
-            const endpoint = apiData[categoryKey].endpoints[endpointIndex];
-            const baseUrl = getBaseUrl();
-            endpoint.status = 'checking';
-            renderSidebar();
-            try {
-                let testUrl = `${baseUrl}${endpoint.path}`;
-                if (endpoint.params && endpoint.params.length > 0) {
-                    const queryParams = endpoint.params.map(p => `${encodeURIComponent(p.name)}=${encodeURIComponent(p.placeholder || 'test')}`);
-                    testUrl += '?' + queryParams.join('&');
+        function restoreSavedStatus() {
+            const savedResults = localStorage.getItem('lastAutoCheckResults');
+            if (savedResults) {
+                try {
+                    const parsed = JSON.parse(savedResults);
+                    Object.keys(parsed).forEach(catKey => {
+                        if (apiData[catKey]) {
+                            parsed[catKey].endpoints.forEach((savedEp, idx) => {
+                                if (apiData[catKey].endpoints[idx]) {
+                                    apiData[catKey].endpoints[idx].status = savedEp.status;
+                                }
+                            });
+                        }
+                    });
+                    
+                    const lastTime = localStorage.getItem('lastAutoCheckTime');
+                    if (lastTime) {
+                        const date = new Date(lastTime);
+                        const timeString = date.toLocaleString('en-US', { 
+                            timeZone: 'Asia/Colombo',
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        
+                        let onlineCount = 0;
+                        let totalCount = 0;
+                        Object.keys(apiData).forEach(catKey => {
+                            apiData[catKey].endpoints.forEach(ep => {
+                                totalCount++;
+                                if (ep.status === 'online') onlineCount++;
+                            });
+                        });
+                        
+                        const status = onlineCount === totalCount ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
+                        updateHealthCheckPanel(status, `${onlineCount}/${totalCount} APIs Online`, timeString);
+                    }
+                } catch (e) {
+                    console.log('Could not restore previous check results');
+                    updateHealthCheckPanel('checking', 'Not checked yet', 'Click button to check');
                 }
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                await fetch(testUrl, { method: 'GET', signal: controller.signal });
-                clearTimeout(timeoutId);
-                endpoint.status = 'online';
-            } catch (error) {
-                endpoint.status = 'offline';
-            }
-            renderSidebar();
-            if (isShowingAllApis || currentCategory) {
-                isShowingAllApis ? showAllApis() : showApiList(currentCategory);
+            } else {
+                updateHealthCheckPanel('checking', 'Not checked yet', 'Click button to check');
             }
         }
 
-        async function checkAllApiStatus() {
+        function updateHealthCheckPanel(status, message, time) {
+            const statusEl = document.getElementById('healthCheckStatus');
+            const timeEl = document.getElementById('healthCheckTime');
+            
+            let statusClass = status === 'online' ? 'status-online' : 
+                             status === 'offline' ? 'status-offline' : 'status-checking';
+            
+            statusEl.innerHTML = `<span class="status-indicator ${statusClass}"></span><span>${message}</span>`;
+            
+            if (time) {
+                timeEl.textContent = `Last checked: ${time}`;
+            }
+        }
+
+        async function manualHealthCheck() {
+            if (window.isChecking) return;
+            window.isChecking = true;
+            
+            document.getElementById('healthCheckBtn').disabled = true;
+            updateHealthCheckPanel('checking', 'Checking APIs...', null);
+            
             for (const categoryKey of Object.keys(apiData)) {
                 for (let i = 0; i < apiData[categoryKey].endpoints.length; i++) {
-                    await checkApiStatus(categoryKey, i);
+                    apiData[categoryKey].endpoints[i].status = 'checking';
                 }
             }
+            renderSidebar();
+            if (isShowingAllApis) showAllApis();
+            else if (currentCategory) showApiList(currentCategory);
+            
+            let onlineCount = 0;
+            let offlineCount = 0;
+            
+            for (const categoryKey of Object.keys(apiData)) {
+                for (let i = 0; i < apiData[categoryKey].endpoints.length; i++) {
+                    const result = await checkEndpointForStatus(categoryKey, i);
+                    if (result) onlineCount++;
+                    else offlineCount++;
+                }
+            }
+            
+            const now = new Date();
+            const timeString = now.toLocaleString('en-US', { 
+                timeZone: 'Asia/Colombo',
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            localStorage.setItem('lastAutoCheckTime', now.toISOString());
+            localStorage.setItem('lastAutoCheckResults', JSON.stringify(apiData));
+            
+            const totalChecked = onlineCount + offlineCount;
+            const status = offlineCount === 0 ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
+            const message = `${onlineCount}/${totalChecked} APIs Online`;
+            
+            updateHealthCheckPanel(status, message, timeString);
+            document.getElementById('healthCheckBtn').disabled = false;
+            window.isChecking = false;
+            
+            showToast(`Health check complete: ${onlineCount} online, ${offlineCount} offline`);
+        }
+
+        async function checkEndpointForStatus(categoryKey, endpointIndex) {
+            const endpoint = apiData[categoryKey].endpoints[endpointIndex];
+            const baseUrl = getBaseUrl();
+            
+            try {
+                let testUrl = `${baseUrl}${endpoint.path}`;
+                if (endpoint.params && endpoint.params.length > 0) {
+                    const queryParams = endpoint.params.map(p => 
+                        `${encodeURIComponent(p.name)}=${encodeURIComponent(p.placeholder || 'test')}`
+                    );
+                    testUrl += '?' + queryParams.join('&');
+                }
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                
+                const response = await fetch(testUrl, { 
+                    method: 'GET', 
+                    signal: controller.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                let isOnline = false;
+                
+                if (response.ok) {
+                    try {
+                        const data = await response.json();
+                        if (data && data.status === true) {
+                            isOnline = true;
+                        }
+                    } catch (e) {
+                        isOnline = response.status >= 200 && response.status < 300;
+                    }
+                }
+                
+                endpoint.status = isOnline ? 'online' : 'offline';
+                
+            } catch (error) {
+                endpoint.status = 'offline';
+            }
+            
+            renderSidebar();
+            if (isShowingAllApis) showAllApis();
+            else if (currentCategory) showApiList(currentCategory);
+            
+            return endpoint.status === 'online';
         }
 
         function setupHomeSearch() {
@@ -933,229 +1066,6 @@
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
-
-        // ============================================
-        // AUTO API HEALTH CHECK SYSTEM
-        // Runs every Wednesday at 12:00 AM Sri Lankan Time
-        // ============================================
-        
-        const AUTO_CHECK_CONFIG = {
-            checkIntervalMinutes: 1,
-            targetDay: 3,
-            targetHour: 0,
-            targetMinute: 0,
-            timezone: 'Asia/Colombo'
-        };
-
-        let lastAutoCheckTime = localStorage.getItem('lastAutoCheckTime') || null;
-        let isAutoChecking = false;
-
-        function getSriLankanTime() {
-            return new Date(new Date().toLocaleString("en-US", { timeZone: AUTO_CHECK_CONFIG.timezone }));
-        }
-
-        function isAutoCheckTime() {
-            const now = getSriLankanTime();
-            return now.getDay() === AUTO_CHECK_CONFIG.targetDay && 
-                   now.getHours() === AUTO_CHECK_CONFIG.targetHour && 
-                   now.getMinutes() === AUTO_CHECK_CONFIG.targetMinute;
-        }
-
-        function hasCheckedToday() {
-            if (!lastAutoCheckTime) return false;
-            const lastCheck = new Date(lastAutoCheckTime);
-            const now = getSriLankanTime();
-            return lastCheck.getDate() === now.getDate() && 
-                   lastCheck.getMonth() === now.getMonth() && 
-                   lastCheck.getFullYear() === now.getFullYear();
-        }
-
-        function updateHealthCheckPanel(status, message, time) {
-            const statusEl = document.getElementById('healthCheckStatus');
-            const timeEl = document.getElementById('healthCheckTime');
-            
-            let statusClass = status === 'online' ? 'status-online' : 
-                             status === 'offline' ? 'status-offline' : 'status-checking';
-            
-            statusEl.innerHTML = `<span class="status-indicator ${statusClass}"></span><span>${message}</span>`;
-            
-            if (time) {
-                timeEl.textContent = `Last checked: ${time}`;
-            }
-        }
-
-        async function performAutoHealthCheck() {
-            if (isAutoChecking) return;
-            isAutoChecking = true;
-            
-            console.log('[AUTO-CHECK] Starting automatic API health check at', new Date().toISOString());
-            updateHealthCheckPanel('checking', 'Checking APIs...', null);
-            document.getElementById('healthCheckBtn').disabled = true;
-            
-            for (const categoryKey of Object.keys(apiData)) {
-                for (let i = 0; i < apiData[categoryKey].endpoints.length; i++) {
-                    apiData[categoryKey].endpoints[i].status = 'checking';
-                }
-            }
-            renderSidebar();
-            if (isShowingAllApis) showAllApis();
-            else if (currentCategory) showApiList(currentCategory);
-            
-            let onlineCount = 0;
-            let offlineCount = 0;
-            
-            for (const categoryKey of Object.keys(apiData)) {
-                for (let i = 0; i < apiData[categoryKey].endpoints.length; i++) {
-                    const result = await checkEndpointForStatus(categoryKey, i);
-                    if (result) onlineCount++;
-                    else offlineCount++;
-                }
-            }
-            
-            lastAutoCheckTime = getSriLankanTime().toISOString();
-            localStorage.setItem('lastAutoCheckTime', lastAutoCheckTime);
-            localStorage.setItem('lastAutoCheckResults', JSON.stringify(apiData));
-            
-            const timeString = getSriLankanTime().toLocaleString('en-US', { 
-                timeZone: AUTO_CHECK_CONFIG.timezone,
-                month: 'short', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            
-            const totalChecked = onlineCount + offlineCount;
-            const status = offlineCount === 0 ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
-            const message = `${onlineCount}/${totalChecked} APIs Online`;
-            
-            updateHealthCheckPanel(status, message, timeString);
-            document.getElementById('healthCheckBtn').disabled = false;
-            
-            console.log(`[AUTO-CHECK] Completed. ${onlineCount} online, ${offlineCount} offline`);
-            isAutoChecking = false;
-        }
-
-        async function checkEndpointForStatus(categoryKey, endpointIndex) {
-            const endpoint = apiData[categoryKey].endpoints[endpointIndex];
-            const baseUrl = getBaseUrl();
-            
-            try {
-                let testUrl = `${baseUrl}${endpoint.path}`;
-                if (endpoint.params && endpoint.params.length > 0) {
-                    const queryParams = endpoint.params.map(p => 
-                        `${encodeURIComponent(p.name)}=${encodeURIComponent(p.placeholder || 'test')}`
-                    );
-                    testUrl += '?' + queryParams.join('&');
-                }
-                
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                
-                const response = await fetch(testUrl, { 
-                    method: 'GET', 
-                    signal: controller.signal,
-                    headers: { 'Accept': 'application/json' }
-                });
-                
-                clearTimeout(timeoutId);
-                
-                let isOnline = false;
-                
-                if (response.ok) {
-                    try {
-                        const data = await response.json();
-                        if (data && data.status === true) {
-                            isOnline = true;
-                        }
-                    } catch (e) {
-                        isOnline = response.status >= 200 && response.status < 300;
-                    }
-                }
-                
-                endpoint.status = isOnline ? 'online' : 'offline';
-                
-            } catch (error) {
-                endpoint.status = 'offline';
-            }
-            
-            renderSidebar();
-            if (isShowingAllApis) showAllApis();
-            else if (currentCategory) showApiList(currentCategory);
-            
-            return endpoint.status === 'online';
-        }
-
-        function startAutoCheckScheduler() {
-            const now = getSriLankanTime();
-            
-            if (now.getDay() === AUTO_CHECK_CONFIG.targetDay && !hasCheckedToday() && now.getHours() >= 0) {
-                setTimeout(performAutoHealthCheck, 2000);
-            }
-            
-            setInterval(() => {
-                if (isAutoCheckTime() && !hasCheckedToday()) {
-                    performAutoHealthCheck();
-                }
-            }, AUTO_CHECK_CONFIG.checkIntervalMinutes * 60 * 1000);
-            
-            const savedResults = localStorage.getItem('lastAutoCheckResults');
-            if (savedResults) {
-                try {
-                    const parsed = JSON.parse(savedResults);
-                    Object.keys(parsed).forEach(catKey => {
-                        if (apiData[catKey]) {
-                            parsed[catKey].endpoints.forEach((savedEp, idx) => {
-                                if (apiData[catKey].endpoints[idx]) {
-                                    apiData[catKey].endpoints[idx].status = savedEp.status;
-                                }
-                            });
-                        }
-                    });
-                    
-                    const lastTime = localStorage.getItem('lastAutoCheckTime');
-                    if (lastTime) {
-                        const date = new Date(lastTime);
-                        const timeString = date.toLocaleString('en-US', { 
-                            timeZone: AUTO_CHECK_CONFIG.timezone,
-                            month: 'short', 
-                            day: 'numeric', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        });
-                        
-                        let onlineCount = 0;
-                        let totalCount = 0;
-                        Object.keys(apiData).forEach(catKey => {
-                            apiData[catKey].endpoints.forEach(ep => {
-                                totalCount++;
-                                if (ep.status === 'online') onlineCount++;
-                            });
-                        });
-                        
-                        const status = onlineCount === totalCount ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
-                        updateHealthCheckPanel(status, `${onlineCount}/${totalCount} APIs Online`, timeString);
-                    }
-                    
-                    renderSidebar();
-                } catch (e) {
-                    console.log('Could not restore previous check results');
-                    updateHealthCheckPanel('checking', 'Click to check', null);
-                }
-            } else {
-                updateHealthCheckPanel('checking', 'Click to check', null);
-            }
-            
-            console.log('[AUTO-CHECK] Scheduler started. Will check every Wednesday at 12:00 AM SL time.');
-        }
-
-        function manualHealthCheck() {
-            performAutoHealthCheck();
-            showToast('Manual health check started...');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            startAutoCheckScheduler();
-        });
     </script>
 </body>
 </html>
