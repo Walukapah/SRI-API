@@ -1,18 +1,19 @@
 const axios = require("axios");
 
+function formatBytes(bytes) {
+  if (!bytes) return "0 MB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
 async function pornhubdl(videoUrl) {
   try {
-    if (!videoUrl) {
-      throw new Error("Missing URL");
-    }
+    if (!videoUrl) throw new Error("Missing URL");
 
-    // Payload
     const payload = {
       source: "phfans",
       url: videoUrl
     };
 
-    // Headers (VERY IMPORTANT)
     const headers = {
       "Content-Type": "application/json",
       "Origin": "https://pornhubfans.com",
@@ -21,23 +22,34 @@ async function pornhubdl(videoUrl) {
         "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
     };
 
-    const response = await axios.post(
+    const { data } = await axios.post(
       "https://pornhubfans.com/resolve",
       payload,
       { headers }
     );
 
-    // Check response
-    if (!response.data) {
-      throw new Error("No data received");
-    }
+    if (!data) throw new Error("No data received");
 
-    return response.data;
+    const endpoint = data.endpoint;
+
+    // 🔥 Format video list
+    const videos = (data.video || []).map(v => ({
+      quality: v.quality + "p",
+      file_size: v.file_size,
+      file_size_format: formatBytes(v.file_size),
+      download: `${endpoint}/video?token=${v.token}`
+    }));
+
+    // 🔥 Final clean response
+    return {
+      title: data.title,
+      duration: data.duration,
+      thumbnail: `${endpoint}/image?token=${data.thumbnail}`,
+      video: videos
+    };
 
   } catch (error) {
-    throw new Error(
-      "Failed to fetch Pornhub data: " + error.message
-    );
+    throw new Error("Failed to fetch Pornhub data: " + error.message);
   }
 }
 
