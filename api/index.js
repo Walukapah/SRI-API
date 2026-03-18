@@ -6,7 +6,7 @@ const tiktokdl = require('./tiktokdl');
 const instagramdl = require('./instagramdl');
 const pornhubdl = require('./pronhubdl');
 const freefireinfo = require('./freefireinfo');
-const textphoto = require('./textphoto');
+const maker = require('./textphoto');  // textphoto.js එකෙන් maker ශ්‍රිතය import කරන්න
 const youtubedl2 = require('./youtubedl2');
 
 const app = express();
