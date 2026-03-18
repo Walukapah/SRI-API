@@ -165,25 +165,36 @@ app.get('/search/freefire', async (req, res) => {
 });
 
 
-// Add this new endpoint to your existing index.js
-// Photo Edit Endpoint
 // Text Photo Generation Endpoint
-// Add this endpoint to your existing index.js
 app.get('/download/textphoto', async (req, res) => {
   try {
-    const { url, ...queryParams } = req.query;
+    const { url, text } = req.query;
     
-    const result = await phototext(url, queryParams);
+    if (!url) {
+      return res.status(400).json({
+        status: false,
+        message: "Please provide a URL parameter"
+      });
+    }
+    
+    if (!text) {
+      return res.status(400).json({
+        status: false,
+        message: "Please provide a text parameter"
+      });
+    }
+
+    const result = await maker(url, text);
     
     res.json({
-      status: result.status === "success",
+      status: true,
       creator: "WALUKA🇱🇰",
       result: result
     });
     
   } catch (error) {
     res.status(500).json({
-      success: false,
+      status: false,
       message: error.message
     });
   }
