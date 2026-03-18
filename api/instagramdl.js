@@ -25,8 +25,8 @@ module.exports = async (url) => {
 
     // Prepare request data
     const data = {
-      k_exp: "174883043",
-      k_token: "4be712781df85f885178b194776b4a7724c9a04c57585dba75bd3e43fdcc656a",
+      k_exp: "1773732308",
+      k_token: "5b1a4f925d46ec63876a365b990977619949a5a79f5331786e06e14ff025849c",
       q: url,
       t: "media",
       lang: "en",
