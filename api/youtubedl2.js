@@ -9,7 +9,7 @@ const generateCookie = () => {
 const getVideoData = async (videoUrl) => {
   const params = new URLSearchParams();
   params.append('url', videoUrl);
-  
+
   const headers = {
     "Accept": "*/*",
     "Accept-Encoding": "gzip, deflate, br",
@@ -38,7 +38,7 @@ const getVideoData = async (videoUrl) => {
         maxRedirects: 5
       }
     );
-    
+
     return response.data;
   } catch (error) {
     throw new Error(`API request failed: ${error.message}`);
@@ -56,24 +56,16 @@ module.exports = async (url) => {
 
     // Get video data from API
     const videoData = await getVideoData(url);
-    
+
     if (!videoData || !videoData.api) {
       throw new Error('Invalid API response');
     }
 
-    // Return exact API response format
-    return {
-      status: true,
-      creator: "WALUKA🇱🇰",
-      result: videoData
-    };
+    // Return only the video data (without wrapping)
+    return videoData;
 
   } catch (error) {
     console.error('YouTubeDL2 Error:', error.message);
-    return {
-      status: false,
-      creator: "WALUKA🇱🇰",
-      message: error.message
-    };
+    throw error; // Throw error to let index.js handle it
   }
 };
