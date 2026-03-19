@@ -4,47 +4,12 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
-  "env": {
-    "NODE_VERSION": "18"
-  },
   "routes": [
     {
-      "src": "/download/tiktokdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/youtubedl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/instagramdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/pornhubdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/search/freefire",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/textphoto",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/youtubedl2",
-      "dest": "api/index.js"
-    },
-    {
       "src": "/(.*)",
-      "dest": "public/$1"
+      "dest": "api/index.js"
     }
   ]
 }
