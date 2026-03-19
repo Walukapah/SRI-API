@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     },
     {
@@ -15,32 +15,8 @@
   },
   "routes": [
     {
-      "src": "/download/tiktokdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/youtubedl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/instagramdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/pornhubdl",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/search/freefire",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/textphoto",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/download/youtubedl2",
-      "dest": "api/index.js"
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js"
     },
     {
       "src": "/(.*)",
