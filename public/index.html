@@ -21,7 +21,35 @@
         .nav-logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
         .nav-logo:hover { opacity: 0.7; }
         .nav-logo-icon { width: 32px; height: 32px; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; }
-        .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-right { display: flex; align-items: center; gap: 16px; }
+        
+        /* Stats Counter Styles - Desktop & Mobile */
+        .nav-stats { display: flex; align-items: center; gap: 12px; }
+        .stat-item { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--text-secondary); transition: all 0.2s; }
+        .stat-item:hover { background: var(--hover); border-color: var(--accent); color: var(--text-primary); }
+        .stat-icon { width: 14px; height: 14px; color: var(--accent); }
+        .stat-value { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+        
+        /* Mobile Stats - Compact version */
+        @media (max-width: 768px) { 
+            .navbar { padding: 0 12px; }
+            .nav-stats { gap: 8px; }
+            .stat-item { 
+                padding: 4px 8px; 
+                font-size: 11px; 
+                border-radius: 8px;
+            }
+            .stat-icon { width: 12px; height: 12px; }
+            .stat-value { font-size: 11px; }
+            .stat-item span:last-child { display: none; } /* Hide "Calls" and "Visitors" text on mobile */
+        }
+        
+        /* Extra small screens */
+        @media (max-width: 380px) {
+            .nav-logo span { display: none; } /* Hide "SRI API" text, show only icon */
+            .stat-item { padding: 4px 6px; }
+        }
+        
         .sidebar { position: fixed; top: 64px; left: 0; width: var(--sidebar-width); height: calc(100vh - 64px); background: var(--bg-secondary); border-right: 1px solid var(--border); overflow-y: auto; z-index: 999; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
         .sidebar.active { transform: translateX(0); }
         .sidebar-overlay { position: fixed; top: 64px; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.3); opacity: 0; visibility: hidden; transition: all 0.3s; z-index: 998; }
@@ -248,7 +276,28 @@
                 <span>SRI API</span>
             </div>
         </div>
-        <div class="nav-right"></div>
+        <div class="nav-right">
+            <!-- Stats Counters - Desktop & Mobile -->
+            <div class="nav-stats">
+                <div class="stat-item" title="Total API Calls">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    <span class="stat-value" id="apiCallsCounter">0</span>
+                    <span>Calls</span>
+                </div>
+                <div class="stat-item" title="Total Visitors">
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="stat-value" id="visitorsCounter">0</span>
+                    <span>Visitors</span>
+                </div>
+            </div>
+        </div>
     </nav>
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <aside class="sidebar" id="sidebar">
@@ -460,12 +509,115 @@
 
         let currentCategory = null, currentEndpoint = null, currentResponse = null, currentTab = 'curl', sidebarSearchQuery = '', isShowingAllApis = false;
 
+        // ============================================
+        // STATS SYSTEM - API Calls & Visitors (Daily Unique)
+        // ============================================
+        
+        const STATS_CONFIG = {
+            storageKey: 'sri_api_stats',
+            visitorDateKey: 'sri_api_visitor_date',
+            visitorIdKey: 'sri_api_visitor_id'
+        };
+
+        function initStats() {
+            // Initialize visitor tracking with daily unique logic
+            trackDailyUniqueVisitor();
+            // Load and display stats
+            updateStatsDisplay();
+        }
+
+        function getTodayDateString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        function trackDailyUniqueVisitor() {
+            const today = getTodayDateString();
+            const lastVisitDate = localStorage.getItem(STATS_CONFIG.visitorDateKey);
+            
+            // Check if this is a new day or first visit
+            if (lastVisitDate !== today) {
+                // New day - increment visitor count and update date
+                const stats = getStats();
+                stats.visitors++;
+                stats.lastVisitDate = today;
+                saveStats(stats);
+                
+                // Save today's date as last visit
+                localStorage.setItem(STATS_CONFIG.visitorDateKey, today);
+                
+                console.log('[STATS] New daily visitor counted:', today);
+            } else {
+                console.log('[STATS] Visitor already counted today:', today);
+            }
+        }
+
+        function incrementApiCall() {
+            const stats = getStats();
+            stats.apiCalls++;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function getStats() {
+            try {
+                const saved = localStorage.getItem(STATS_CONFIG.storageKey);
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {
+                console.log('[STATS] Could not load stats:', e);
+            }
+            return { 
+                apiCalls: 0, 
+                visitors: 0, 
+                lastVisitDate: null,
+                lastUpdated: new Date().toISOString() 
+            };
+        }
+
+        function saveStats(stats) {
+            stats.lastUpdated = new Date().toISOString();
+            localStorage.setItem(STATS_CONFIG.storageKey, JSON.stringify(stats));
+        }
+
+        function updateStatsDisplay() {
+            const stats = getStats();
+            const apiCallsEl = document.getElementById('apiCallsCounter');
+            const visitorsEl = document.getElementById('visitorsCounter');
+            
+            if (apiCallsEl) {
+                apiCallsEl.textContent = formatNumber(stats.apiCalls);
+            }
+            if (visitorsEl) {
+                visitorsEl.textContent = formatNumber(stats.visitors);
+            }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        // Reset stats (for testing - remove in production)
+        function resetStats() {
+            localStorage.removeItem(STATS_CONFIG.storageKey);
+            localStorage.removeItem(STATS_CONFIG.visitorDateKey);
+            updateStatsDisplay();
+            console.log('[STATS] Stats reset');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             renderSidebar();
             setupKeyboardShortcuts();
             setupHomeSearch();
             loadSavedHealthStatus();
             startDailyHealthCheck();
+            initStats(); // Initialize stats tracking
         });
 
         // ============================================
@@ -640,7 +792,7 @@
             updateHealthCheckPanel(overallStatus, summary, timeString);
             
             // Refresh displays
-            renderSidebar();
+                        renderSidebar();
             if (isShowingAllApis) showAllApis();
             else if (currentCategory) showApiList(currentCategory);
             
@@ -790,7 +942,7 @@
             });
         }
 
-                function renderHomeSearchResults(query) {
+        function renderHomeSearchResults(query) {
             const grid = document.getElementById('searchResultsGrid');
             const countEl = document.getElementById('searchResultsCount');
             const lowerQuery = query.toLowerCase();
@@ -1097,6 +1249,10 @@
                 }
                 responseTime.textContent = `${duration}ms`;
                 responseContent.innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
+                
+                // Increment API call counter on successful test
+                incrementApiCall();
+                
             } catch (error) {
                 responseStatus.className = 'response-status status-error';
                 responseStatus.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Network Error`;
