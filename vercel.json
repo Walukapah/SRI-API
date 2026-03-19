@@ -4,20 +4,15 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
   "env": {
-    "NODE_VERSION": "18"
+    "NODE_VERSION": "18.x"
   },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.js",
-      "methods": ["GET", "POST"]
+      "dest": "api/index.js"
     }
   ]
 }
