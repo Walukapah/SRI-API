@@ -483,6 +483,15 @@
     </div>
 
     <script>
+        // ============================================
+        // CONFIGURATION - Hugging Face Backend URL
+        // ============================================
+        // CHANGE THIS TO YOUR HUGGING FACE SPACE URL
+        const HF_BACKEND_URL = "https://srinetwork-api.hf.space"; 
+        
+        // For local testing, you can use: http://localhost:7860
+        // For production, use your Hugging Face Space URL
+
         const getBaseUrl = () => window.location.origin;
 
         const apiData = {
@@ -510,88 +519,74 @@
         let currentCategory = null, currentEndpoint = null, currentResponse = null, currentTab = 'curl', sidebarSearchQuery = '', isShowingAllApis = false;
 
         // ============================================
-        // STATS SYSTEM - API Calls & Visitors (Daily Unique)
+        // STATS SYSTEM - API Calls & Visitors (HF Backend)
         // ============================================
         
         const STATS_CONFIG = {
-            storageKey: 'sri_api_stats',
             visitorDateKey: 'sri_api_visitor_date',
             visitorIdKey: 'sri_api_visitor_id'
         };
 
-        function initStats() {
-            // Initialize visitor tracking with daily unique logic
-            trackDailyUniqueVisitor();
-            // Load and display stats
-            updateStatsDisplay();
+        async function initStats() {
+            // Track visitor (daily unique)
+            await trackDailyUniqueVisitor();
+            // Load and display stats from HF backend
+            await updateStatsDisplay();
         }
 
-        function getTodayDateString() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        }
-
-        function trackDailyUniqueVisitor() {
-            const today = getTodayDateString();
+        async function trackDailyUniqueVisitor() {
+            const today = new Date().toISOString().split('T')[0];
             const lastVisitDate = localStorage.getItem(STATS_CONFIG.visitorDateKey);
             
-            // Check if this is a new day or first visit
             if (lastVisitDate !== today) {
-                // New day - increment visitor count and update date
-                const stats = getStats();
-                stats.visitors++;
-                stats.lastVisitDate = today;
-                saveStats(stats);
-                
-                // Save today's date as last visit
-                localStorage.setItem(STATS_CONFIG.visitorDateKey, today);
-                
-                console.log('[STATS] New daily visitor counted:', today);
-            } else {
-                console.log('[STATS] Visitor already counted today:', today);
+                // New visitor - send to backend
+                try {
+                    await fetch(`${HF_BACKEND_URL}/stats/increment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'visitor' })
+                    });
+                    localStorage.setItem(STATS_CONFIG.visitorDateKey, today);
+                    console.log('[STATS] New visitor tracked');
+                } catch (e) {
+                    console.log('[STATS] Failed to track visitor:', e);
+                }
             }
         }
 
-        function incrementApiCall() {
-            const stats = getStats();
-            stats.apiCalls++;
-            saveStats(stats);
-            updateStatsDisplay();
+        async function incrementApiCall(endpoint = null) {
+            try {
+                await fetch(`${HF_BACKEND_URL}/stats/increment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'apiCall', endpoint: endpoint })
+                });
+                await updateStatsDisplay();
+                console.log('[STATS] API call incremented', endpoint ? `for ${endpoint}` : '');
+            } catch (e) {
+                console.log('[STATS] Failed to increment API call:', e);
+            }
         }
 
-        function getStats() {
+        async function getStats() {
             try {
-                const saved = localStorage.getItem(STATS_CONFIG.storageKey);
-                if (saved) {
-                    return JSON.parse(saved);
+                const response = await fetch(`${HF_BACKEND_URL}/stats`);
+                if (response.ok) {
+                    return await response.json();
                 }
             } catch (e) {
                 console.log('[STATS] Could not load stats:', e);
             }
-            return { 
-                apiCalls: 0, 
-                visitors: 0, 
-                lastVisitDate: null,
-                lastUpdated: new Date().toISOString() 
-            };
+            return { apiCalls: 0, visitors: 0 };
         }
 
-        function saveStats(stats) {
-            stats.lastUpdated = new Date().toISOString();
-            localStorage.setItem(STATS_CONFIG.storageKey, JSON.stringify(stats));
-        }
-
-        function updateStatsDisplay() {
-            const stats = getStats();
+        async function updateStatsDisplay() {
+            const stats = await getStats();
             const apiCallsEl = document.getElementById('apiCallsCounter');
             const visitorsEl = document.getElementById('visitorsCounter');
             
-            if (apiCallsEl) {
-                apiCallsEl.textContent = formatNumber(stats.apiCalls);
-            }
-            if (visitorsEl) {
-                visitorsEl.textContent = formatNumber(stats.visitors);
-            }
+            if (apiCallsEl) apiCallsEl.textContent = formatNumber(stats.apiCalls || 0);
+            if (visitorsEl) visitorsEl.textContent = formatNumber(stats.visitors || 0);
         }
 
         function formatNumber(num) {
@@ -603,22 +598,36 @@
             return num.toString();
         }
 
-        // Reset stats (for testing - remove in production)
-        function resetStats() {
-            localStorage.removeItem(STATS_CONFIG.storageKey);
-            localStorage.removeItem(STATS_CONFIG.visitorDateKey);
-            updateStatsDisplay();
-            console.log('[STATS] Stats reset');
+        // ============================================
+        // DIRECT API CALL TRACKING
+        // ============================================
+        
+        // Check if current URL is a direct API call
+        async function trackDirectApiCall() {
+            const path = window.location.pathname;
+            const queryString = window.location.search;
+            
+            // Check if this is an API endpoint path
+            let isApiEndpoint = false;
+            let endpointName = null;
+            
+            Object.values(apiData).forEach(category => {
+                category.endpoints.forEach(ep => {
+                    if (path === ep.path) {
+                        isApiEndpoint = true;
+                        endpointName = ep.name;
+                    }
+                });
+            });
+            
+            // If it's an API endpoint with query params, track it
+            if (isApiEndpoint && queryString) {
+                console.log('[DIRECT API] Detected direct API call to', path);
+                await incrementApiCall(endpointName);
+                return true;
+            }
+            return false;
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderSidebar();
-            setupKeyboardShortcuts();
-            setupHomeSearch();
-            loadSavedHealthStatus();
-            startDailyHealthCheck();
-            initStats(); // Initialize stats tracking
-        });
 
         // ============================================
         // DAILY HEALTH CHECK SYSTEM (12:00 AM SL Time)
@@ -781,7 +790,7 @@
                 }
             }
             
-            const summary = { online: onlineCount, offline: totalCount - onlineCount, total: totalCount };
+                        const summary = { online: onlineCount, offline: totalCount - onlineCount, total: totalCount };
             const timeString = formatSriLankanTime(getSriLankanTime());
             
             // Save to localStorage
@@ -792,7 +801,7 @@
             updateHealthCheckPanel(overallStatus, summary, timeString);
             
             // Refresh displays
-                        renderSidebar();
+            renderSidebar();
             if (isShowingAllApis) showAllApis();
             else if (currentCategory) showApiList(currentCategory);
             
@@ -1251,7 +1260,7 @@
                 responseContent.innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
                 
                 // Increment API call counter on successful test
-                incrementApiCall();
+                await incrementApiCall(currentEndpoint.name);
                 
             } catch (error) {
                 responseStatus.className = 'response-status status-error';
@@ -1345,6 +1354,21 @@
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            setupKeyboardShortcuts();
+            setupHomeSearch();
+            loadSavedHealthStatus();
+            startDailyHealthCheck();
+            initStats(); // Initialize stats tracking
+            trackDirectApiCall(); // Check if this is a direct API call
+        });
     </script>
 </body>
 </html>
+
