@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.js",
+      "src": "api/index.js",
       "use": "@vercel/node"
     },
     {
@@ -10,17 +10,14 @@
       "use": "@vercel/static"
     }
   ],
+  "env": {
+    "NODE_VERSION": "18"
+  },
   "routes": [
     {
-      "src": "/(download|search)/(.*)",
-      "dest": "/api/$2"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "api/index.js",
+      "methods": ["GET", "POST"]
     }
   ]
 }
