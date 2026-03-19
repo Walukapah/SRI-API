@@ -227,16 +227,13 @@
         .category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
         .category-count { font-size: 12px; color: var(--text-secondary); background: var(--bg-primary); padding: 4px 10px; border-radius: 100px; }
         
-        /* Health Check Status Panel */
-        .health-check-panel { position: fixed; bottom: 140px; right: 24px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 220px; }
+        /* Health Check Status Panel - Updated */
+        .health-check-panel { position: fixed; bottom: 24px; right: 24px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 220px; }
         @media (max-width: 768px) { .health-check-panel { display: none; } }
         .health-check-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .health-check-status { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
         .health-check-time { font-size: 11px; color: var(--text-secondary); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-        .health-check-btn { margin-top: 12px; padding: 8px 12px; background: var(--accent); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
-        .health-check-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .health-check-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .health-check-next { font-size: 10px; color: var(--text-secondary); margin-top: 6px; font-style: italic; }
+        .health-check-next { font-size: 11px; color: var(--text-secondary); margin-top: 6px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -418,9 +415,8 @@
         </footer>
     </main>
     <div class="toast" id="toast">Copied to clipboard!</div>
-    <div class="base-url-display" id="baseUrlDisplay"><strong>API Base URL</strong><span id="currentBaseUrl">Detecting...</span></div>
     
-    <!-- Health Check Status Panel -->
+    <!-- Health Check Status Panel - Updated (Manual button and Base URL removed) -->
     <div class="health-check-panel" id="healthCheckPanel">
         <div class="health-check-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -434,13 +430,11 @@
             <span>Loading...</span>
         </div>
         <div class="health-check-time" id="healthCheckTime">Last checked: --</div>
-        <div class="health-check-next" id="healthCheckNext">Next check: Daily at 12:00 AM</div>
-        <button class="health-check-btn" id="healthCheckBtn" onclick="manualHealthCheck()">Check Now</button>
+        <div class="health-check-next" id="healthCheckNext">Next check: Today at 12:00 AM</div>
     </div>
 
     <script>
         const getBaseUrl = () => window.location.origin;
-        document.getElementById('currentBaseUrl').textContent = getBaseUrl();
 
         const apiData = {
             download: {
@@ -499,6 +493,35 @@
                 minute: '2-digit',
                 hour12: true
             });
+        }
+
+        function getNextCheckTime() {
+            const now = getSriLankanTime();
+            const nextCheck = new Date(now);
+            nextCheck.setHours(HEALTH_CHECK_CONFIG.targetHour, HEALTH_CHECK_CONFIG.targetMinute, 0, 0);
+            
+            // If already past 12:00 AM, set to tomorrow
+            if (now.getHours() > HEALTH_CHECK_CONFIG.targetHour || 
+                (now.getHours() === HEALTH_CHECK_CONFIG.targetHour && now.getMinutes() >= HEALTH_CHECK_CONFIG.targetMinute)) {
+                nextCheck.setDate(nextCheck.getDate() + 1);
+            }
+            
+            return nextCheck;
+        }
+
+        function formatNextCheckTime() {
+            const nextCheck = getNextCheckTime();
+            const now = getSriLankanTime();
+            const isToday = nextCheck.getDate() === now.getDate();
+            
+            const timeStr = nextCheck.toLocaleString('en-US', { 
+                timeZone: HEALTH_CHECK_CONFIG.timezone,
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+            });
+            
+            return isToday ? `Today at ${timeStr}` : `Tomorrow at ${timeStr}`;
         }
 
         function loadSavedHealthStatus() {
@@ -560,6 +583,7 @@
         function updateHealthCheckPanel(status, message, time) {
             const statusEl = document.getElementById('healthCheckStatus');
             const timeEl = document.getElementById('healthCheckTime');
+            const nextEl = document.getElementById('healthCheckNext');
             
             let statusClass = 'status-checking';
             let displayMessage = message;
@@ -583,13 +607,15 @@
             } else if (status === 'unchecked') {
                 timeEl.textContent = 'Last checked: Never';
             }
+            
+            // Update next check time
+            nextEl.textContent = `Next check: ${formatNextCheckTime()}`;
         }
 
         async function performDailyHealthCheck() {
             console.log('[HEALTH CHECK] Starting daily check at', formatSriLankanTime(getSriLankanTime()));
             
             updateHealthCheckPanel('checking', 'Checking APIs...', null);
-            document.getElementById('healthCheckBtn').disabled = true;
             
             let onlineCount = 0;
             let totalCount = 0;
@@ -612,7 +638,6 @@
             // Update UI
             const overallStatus = onlineCount === totalCount ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
             updateHealthCheckPanel(overallStatus, summary, timeString);
-            document.getElementById('healthCheckBtn').disabled = false;
             
             // Refresh displays
             renderSidebar();
@@ -731,24 +756,9 @@
             console.log('[HEALTH CHECK] Scheduler started. Daily check at 12:00 AM SL time.');
         }
 
-        function manualHealthCheck() {
-            performDailyHealthCheck();
-            showToast('Manual health check started...');
-        }
-
         // ============================================
-        // EXISTING FUNCTIONS (Modified)
+        // EXISTING FUNCTIONS
         // ============================================
-
-        async function checkApiStatus(categoryKey, endpointIndex) {
-            // This function is kept for compatibility but now uses the daily check system
-            await checkSingleEndpoint(categoryKey, endpointIndex);
-        }
-
-        async function checkAllApiStatus() {
-            // This function is replaced by performDailyHealthCheck
-            await performDailyHealthCheck();
-        }
 
         function setupHomeSearch() {
             const homeSearchInput = document.getElementById('homeSearchInput');
