@@ -10,17 +10,17 @@
       "use": "@vercel/static"
     }
   ],
-  "env": {
-    "NODE_VERSION": "18"
-  },
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.js"
+      "src": "/(download|search)/(.*)",
+      "dest": "/api/$2"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "public/$1"
+      "dest": "/public/$1"
     }
   ]
 }
