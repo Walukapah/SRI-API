@@ -485,7 +485,7 @@
     <script>
         const getBaseUrl = () => window.location.origin;
 
-                const apiData = {
+        const apiData = {
             download: {
                 title: "Download",
                 icon: "download",
@@ -494,7 +494,7 @@
                     { name: "YouTube Downloader V2", path: "/download/youtubedl2", method: "GET", status: "offline", description: "Alternative YouTube downloader using ytdown.to API with enhanced format support.", params: [{ name: "url", type: "string", required: true, description: "YouTube video URL", placeholder: "https://youtube.com/watch?v=dQw4w9WgXcQ" }] },
                     { name: "TikTok Downloader", path: "/download/tiktokdl", method: "GET", status: "offline", description: "Download TikTok videos without watermark, with metadata and music extraction support.", params: [{ name: "url", type: "string", required: true, description: "TikTok video URL (tiktok.com or vm.tiktok.com)", placeholder: "https://vt.tiktok.com/ZSuYLQkMm/" }] },
                     { name: "Instagram Downloader", path: "/download/instagramdl", method: "GET", status: "offline", description: "Download Instagram videos, reels, and images with thumbnail extraction.", params: [{ name: "url", type: "string", required: true, description: "Instagram post/reel URL", placeholder: "https://www.instagram.com/reel/DKR-FW1yo_p/?igsh=eG05NTh3MnUxcnE3" }] },
-                    { name: "SRI Downloader", path: "/download/sri", method: "GET", status: "offline", description: "Download videos from SRI.LK platform.", params: [{ name: "url", type: "string", required: true, description: "SRI video URL (sri.lk)", placeholder: "https://sri.lk/video/12345" }] },
+                    { name: "Pornhub Downloader", path: "/download/pornhubdl", method: "GET", status: "offline", description: "Download videos from Pornhub with multiple quality options (18+).", params: [{ name: "url", type: "string", required: true, description: "Pornhub video URL", placeholder: "https://www.pornhub.com/view_video.php?viewkey=ph5ca4e9a356aaf" }] },
                     { name: "Text to Photo", path: "/download/textphoto", method: "GET", status: "offline", description: "Generate stylized text images using ephoto360, photooxy, and textpro templates.", params: [{ name: "url", type: "string", required: true, description: "Template URL from ephoto360.com, photooxy.com, or textpro.me", placeholder: "https://textpro.me/create-naruto-logo-style-text-effect-online-1125.html" }, { name: "text", type: "string", required: true, description: "First text parameter", placeholder: "SRI API W" }] }
                 ]
             },
@@ -510,30 +510,87 @@
         let currentCategory = null, currentEndpoint = null, currentResponse = null, currentTab = 'curl', sidebarSearchQuery = '', isShowingAllApis = false;
 
         // ============================================
-        // STATS SYSTEM - Fetch from Backend API
+        // STATS SYSTEM - API Calls & Visitors (Daily Unique)
         // ============================================
         
-        async function fetchStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-                if (data.status) {
-                    updateStatsDisplay(data.apiCalls, data.visitors);
-                }
-            } catch (error) {
-                console.error('Failed to fetch stats:', error);
+        const STATS_CONFIG = {
+            storageKey: 'sri_api_stats',
+            visitorDateKey: 'sri_api_visitor_date',
+            visitorIdKey: 'sri_api_visitor_id'
+        };
+
+        function initStats() {
+            // Initialize visitor tracking with daily unique logic
+            trackDailyUniqueVisitor();
+            // Load and display stats
+            updateStatsDisplay();
+        }
+
+        function getTodayDateString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        function trackDailyUniqueVisitor() {
+            const today = getTodayDateString();
+            const lastVisitDate = localStorage.getItem(STATS_CONFIG.visitorDateKey);
+            
+            // Check if this is a new day or first visit
+            if (lastVisitDate !== today) {
+                // New day - increment visitor count and update date
+                const stats = getStats();
+                stats.visitors++;
+                stats.lastVisitDate = today;
+                saveStats(stats);
+                
+                // Save today's date as last visit
+                localStorage.setItem(STATS_CONFIG.visitorDateKey, today);
+                
+                console.log('[STATS] New daily visitor counted:', today);
+            } else {
+                console.log('[STATS] Visitor already counted today:', today);
             }
         }
 
-        function updateStatsDisplay(apiCalls, visitors) {
+        function incrementApiCall() {
+            const stats = getStats();
+            stats.apiCalls++;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function getStats() {
+            try {
+                const saved = localStorage.getItem(STATS_CONFIG.storageKey);
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {
+                console.log('[STATS] Could not load stats:', e);
+            }
+            return { 
+                apiCalls: 0, 
+                visitors: 0, 
+                lastVisitDate: null,
+                lastUpdated: new Date().toISOString() 
+            };
+        }
+
+        function saveStats(stats) {
+            stats.lastUpdated = new Date().toISOString();
+            localStorage.setItem(STATS_CONFIG.storageKey, JSON.stringify(stats));
+        }
+
+        function updateStatsDisplay() {
+            const stats = getStats();
             const apiCallsEl = document.getElementById('apiCallsCounter');
             const visitorsEl = document.getElementById('visitorsCounter');
             
             if (apiCallsEl) {
-                apiCallsEl.textContent = formatNumber(apiCalls || 0);
+                apiCallsEl.textContent = formatNumber(stats.apiCalls);
             }
             if (visitorsEl) {
-                visitorsEl.textContent = formatNumber(visitors || 0);
+                visitorsEl.textContent = formatNumber(stats.visitors);
             }
         }
 
@@ -546,15 +603,21 @@
             return num.toString();
         }
 
-        // Fetch stats on page load and refresh every 30 seconds
+        // Reset stats (for testing - remove in production)
+        function resetStats() {
+            localStorage.removeItem(STATS_CONFIG.storageKey);
+            localStorage.removeItem(STATS_CONFIG.visitorDateKey);
+            updateStatsDisplay();
+            console.log('[STATS] Stats reset');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             renderSidebar();
             setupKeyboardShortcuts();
             setupHomeSearch();
             loadSavedHealthStatus();
             startDailyHealthCheck();
-            fetchStats(); // Fetch from backend
-            setInterval(fetchStats, 30000); // Refresh every 30 seconds
+            initStats(); // Initialize stats tracking
         });
 
         // ============================================
@@ -589,6 +652,7 @@
             const nextCheck = new Date(now);
             nextCheck.setHours(HEALTH_CHECK_CONFIG.targetHour, HEALTH_CHECK_CONFIG.targetMinute, 0, 0);
             
+            // If already past 12:00 AM, set to tomorrow
             if (now.getHours() > HEALTH_CHECK_CONFIG.targetHour || 
                 (now.getHours() === HEALTH_CHECK_CONFIG.targetHour && now.getMinutes() >= HEALTH_CHECK_CONFIG.targetMinute)) {
                 nextCheck.setDate(nextCheck.getDate() + 1);
@@ -620,11 +684,13 @@
                     const savedDate = new Date(parsed.timestamp);
                     const now = getSriLankanTime();
                     
+                    // Check if saved data is from today
                     const isToday = savedDate.getDate() === now.getDate() && 
                                    savedDate.getMonth() === now.getMonth() && 
                                    savedDate.getFullYear() === now.getFullYear();
                     
                     if (isToday && parsed.endpoints) {
+                        // Restore saved statuses
                         Object.keys(parsed.endpoints).forEach(categoryKey => {
                             if (apiData[categoryKey]) {
                                 parsed.endpoints[categoryKey].forEach((savedEp, idx) => {
@@ -645,6 +711,7 @@
                 console.log('[HEALTH CHECK] Could not load saved status:', e);
             }
             
+            // No saved data or expired - show as unchecked
             updateHealthCheckPanel('unchecked', 'Not checked today', null);
             return false;
         }
@@ -693,6 +760,7 @@
                 timeEl.textContent = 'Last checked: Never';
             }
             
+            // Update next check time
             nextEl.textContent = `Next check: ${formatNextCheckTime()}`;
         }
 
@@ -704,6 +772,7 @@
             let onlineCount = 0;
             let totalCount = 0;
             
+            // Check all endpoints
             for (const categoryKey of Object.keys(apiData)) {
                 for (let i = 0; i < apiData[categoryKey].endpoints.length; i++) {
                     totalCount++;
@@ -715,12 +784,15 @@
             const summary = { online: onlineCount, offline: totalCount - onlineCount, total: totalCount };
             const timeString = formatSriLankanTime(getSriLankanTime());
             
+            // Save to localStorage
             saveHealthStatus(summary);
             
+            // Update UI
             const overallStatus = onlineCount === totalCount ? 'online' : onlineCount === 0 ? 'offline' : 'checking';
             updateHealthCheckPanel(overallStatus, summary, timeString);
             
-            renderSidebar();
+            // Refresh displays
+                        renderSidebar();
             if (isShowingAllApis) showAllApis();
             else if (currentCategory) showApiList(currentCategory);
             
@@ -732,6 +804,7 @@
             const endpoint = apiData[categoryKey].endpoints[endpointIndex];
             const baseUrl = getBaseUrl();
             
+            // Set to checking while testing
             endpoint.status = 'checking';
             renderSidebar();
             
@@ -755,6 +828,7 @@
                 
                 clearTimeout(timeoutId);
                 
+                // Check if response contains {"status": true}
                 let isOnline = false;
                 if (response.ok) {
                     try {
@@ -763,6 +837,7 @@
                             isOnline = true;
                         }
                     } catch (e) {
+                        // If JSON parse fails but response was OK, consider online
                         isOnline = true;
                     }
                 }
@@ -778,6 +853,7 @@
         }
 
         function startDailyHealthCheck() {
+            // Check immediately if it's past midnight and not checked today
             const now = getSriLankanTime();
             const savedData = localStorage.getItem(HEALTH_CHECK_CONFIG.storageKey);
             
@@ -789,6 +865,7 @@
                     const savedDay = savedDate.getDate();
                     const today = now.getDate();
                     
+                    // If saved date is not today, and it's past 12:00 AM, check now
                     if (savedDay !== today && now.getHours() >= 0) {
                         shouldCheckNow = true;
                     }
@@ -800,9 +877,10 @@
             }
             
             if (shouldCheckNow) {
-                setTimeout(performDailyHealthCheck, 3000);
+                setTimeout(performDailyHealthCheck, 3000); // Wait 3 seconds after page load
             }
             
+            // Set up interval to check every minute if it's 12:00 AM
             setInterval(() => {
                 const currentTime = getSriLankanTime();
                 if (currentTime.getHours() === HEALTH_CHECK_CONFIG.targetHour && 
@@ -825,7 +903,7 @@
                         performDailyHealthCheck();
                     }
                 }
-            }, 60000);
+            }, 60000); // Check every minute
             
             console.log('[HEALTH CHECK] Scheduler started. Daily check at 12:00 AM SL time.');
         }
@@ -1172,8 +1250,8 @@
                 responseTime.textContent = `${duration}ms`;
                 responseContent.innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
                 
-                // Refresh stats after successful test
-                fetchStats();
+                // Increment API call counter on successful test
+                incrementApiCall();
                 
             } catch (error) {
                 responseStatus.className = 'response-status status-error';
